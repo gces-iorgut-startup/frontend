@@ -33,7 +33,7 @@ function buildExportContent(patient: Patient, record: TutorPortalClinicalRecord)
   const routineGuidance = parseRoutineGuidance(record.routineGuidance)
 
   return [
-    `Atendimento - ${formatDateTime(record.createdAt)}`,
+    `Atendimento - ${formatDateTime(record.appointment?.dateTime ?? record.createdAt)}`,
     '',
     `Paciente: ${patient.name}`,
     `Diagnostico: ${record.diagnosis ?? '—'}`,
@@ -87,7 +87,7 @@ export function TutorPortalHistoryDetailsPage() {
 
     async function loadDetails() {
       if (!recordId || !patientId) {
-        setError('Parametros invalidos para abrir este atendimento.')
+        setError('Parâmetros inválidos para abrir este atendimento.')
         setLoading(false)
         return
       }
@@ -100,7 +100,7 @@ export function TutorPortalHistoryDetailsPage() {
         const matchedRecord = response.clinicalRecords.find((item) => item.id === recordId)
 
         if (!matchedRecord) {
-          throw new Error('Prontuario nao encontrado para este paciente.')
+          throw new Error('Prontuário não encontrado para este paciente.')
         }
 
         if (!cancelled) {
@@ -109,7 +109,7 @@ export function TutorPortalHistoryDetailsPage() {
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          setError(getErrorMessage(err, 'Nao foi possivel carregar os detalhes da consulta.'))
+          setError(getErrorMessage(err, 'Não foi possível carregar os detalhes da consulta.'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -141,7 +141,7 @@ export function TutorPortalHistoryDetailsPage() {
   }
 
   if (error || !patient || !record) {
-    return <div className="history-detail-state">{error || 'Atendimento nao encontrado.'}</div>
+    return <div className="history-detail-state">{error || 'Atendimento não encontrado.'}</div>
   }
 
   return (
@@ -173,14 +173,16 @@ export function TutorPortalHistoryDetailsPage() {
       </div>
 
       <div className="history-detail-content">
-        <p className="history-detail-kicker">Atendimento - {formatDateTime(record.createdAt)}</p>
+        <p className="history-detail-kicker">
+          Atendimento - {formatDateTime(record.appointment?.dateTime ?? record.createdAt)}
+        </p>
 
-        <InfoBlock title="Diagnostico provisiorio / definitivo:" content={record.diagnosis} />
+        <InfoBlock title="Diagnóstico provisório / definitivo:" content={record.diagnosis} />
         <InfoBlock title="Pedidos de exame:" content={record.pendingDiagnosis} />
-        <InfoBlock title="Medicacao / Prescricao:" content={record.prescriptions} />
-        <InfoBlock title="Observacoes:" content={routineGuidance.observations} />
+        <InfoBlock title="Medicação / Prescrição:" content={record.prescriptions} />
+        <InfoBlock title="Observações:" content={routineGuidance.observations} />
         <InfoBlock
-          title="Recomendacoes adicionais:"
+          title="Observações adicionais:"
           content={routineGuidance.additionalObservations}
         />
         <InfoBlock title="Resumo IA:" content={record.aiSummary} />

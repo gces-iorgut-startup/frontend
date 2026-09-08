@@ -364,6 +364,15 @@ export interface TutorPortalClinicalRecord {
   vet?: {
     name: string
   }
+  /**
+   * Agendamento que originou o prontuario. Define o tipo de atendimento
+   * exibido no historico do tutor. Nulo quando o prontuario foi aberto
+   * fora da agenda (Appointment.category vive em ClinicalRecord.appointment).
+   */
+  appointment?: {
+    category: AppointmentCategory
+    dateTime: string
+  } | null
 }
 
 export interface TutorPortalPatientHistory {

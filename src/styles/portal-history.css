@@ -1,0 +1,197 @@
+/* ═══════════════════════════════════════════════════
+   Histórico do Tutor (US16)
+   ─────────────────────────────────────────────────
+   Bloco próprio, separado de .history-table, que serve
+   a listagem do veterinário (6 colunas). Aqui a tabela
+   do protótipo tem 4 colunas e vira cartão no mobile
+   com marcação real — sem ::before por nth-child.
+   ═══════════════════════════════════════════════════ */
+
+/* ── Tabela (desktop) ─────────────────────────────── */
+.tutor-history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tutor-history-table th,
+.tutor-history-table td {
+  text-align: left;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.tutor-history-table th {
+  color: var(--gray-900);
+  font-weight: 700;
+}
+
+.tutor-history-table td {
+  color: var(--gray-600);
+}
+
+.tutor-history-table .tutor-history-action-col {
+  text-align: right;
+  width: 72px;
+}
+
+.tutor-history-table tbody tr:hover td {
+  background: var(--gray-50);
+}
+
+/* ── Cartões (mobile) ─────────────────────────────── */
+.tutor-history-cards {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tutor-history-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 52px 16px 18px;
+  text-align: left;
+  font: inherit;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 18px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.tutor-history-card:hover,
+.tutor-history-card:focus-visible {
+  border-color: var(--pink-300);
+  box-shadow: 0 8px 20px rgba(236, 111, 165, 0.12);
+  outline: none;
+}
+
+.tutor-history-card:active {
+  transform: scale(0.995);
+}
+
+.tutor-history-card-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tutor-history-card-type {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.tutor-history-card-date {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--pink-500);
+  white-space: nowrap;
+}
+
+.tutor-history-card-row {
+  display: grid;
+  gap: 2px;
+  font-size: 0.88rem;
+  color: var(--gray-700);
+}
+
+.tutor-history-card-row small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-500);
+}
+
+.tutor-history-card-cta {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: var(--pink-500);
+  background: var(--pink-50);
+}
+
+/* ── Estado vazio ─────────────────────────────────── */
+.tutor-history-empty {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: var(--space-xl) var(--space-md);
+  text-align: center;
+}
+
+.tutor-history-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-full);
+  background: var(--pink-50);
+  color: var(--pink-300);
+}
+
+.tutor-history-empty h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.tutor-history-empty p {
+  max-width: 380px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--gray-500);
+}
+
+.tutor-history-empty-action {
+  margin-top: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--pink-300);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background var(--transition-fast);
+}
+
+.tutor-history-empty-action:hover {
+  background: var(--pink-400);
+}
+
+/* ── Troca tabela ⇄ cartões ───────────────────────── */
+@media (max-width: 768px) {
+  .tutor-history-table {
+    display: none;
+  }
+
+  .tutor-history-cards {
+    display: flex;
+  }
+
+  .tutor-history-empty {
+    min-height: 260px;
+  }
+
+  .tutor-history-empty-icon {
+    width: 54px;
+    height: 54px;
+  }
+}

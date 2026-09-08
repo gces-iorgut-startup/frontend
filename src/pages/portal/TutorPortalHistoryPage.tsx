@@ -1,23 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRightToLine, Calendar, Filter, Search } from 'lucide-react'
+import { ArrowRightToLine, Calendar, FileClock, Filter, Search, SearchX } from 'lucide-react'
+import { APPOINTMENT_CATEGORY_LABELS } from '../../lib/appointmentCategory'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { portalService } from '../../lib/portalService'
-import type { Patient, TutorPortalClinicalRecord } from '../../types'
+import type { AppointmentCategory, TutorPortalClinicalRecord } from '../../types'
 import '../../styles/history.css'
+import '../../styles/portal-history.css'
 
 const PER_PAGE = 10
+
+/**
+ * Prontuários abertos fora da agenda não têm Appointment vinculado, então não
+ * carregam categoria. Caem em "Consulta", que é o rótulo de OBSERVATION.
+ */
+const FALLBACK_TYPE = APPOINTMENT_CATEGORY_LABELS.OBSERVATION
 
 interface TutorHistoryListItem {
   id: string
   patientId: string
   patientName: string
-  tutorName: string
   date: string
-  species: string
+  type: string
   vetName: string
-  record: TutorPortalClinicalRecord
-  patient: Patient
 }
 
 function formatDate(date: string) {
@@ -36,6 +41,15 @@ function maskDate(value: string) {
 function matchesDateFilter(itemDate: string, filterDate: string) {
   if (!filterDate || filterDate.length !== 10) return true
   return formatDate(itemDate) === filterDate
+}
+
+/** Tipo de atendimento: vem da categoria do agendamento que gerou o prontuário. */
+function getTypeLabel(record: TutorPortalClinicalRecord) {
+  const category = record.appointment?.category
+  if (category && category in APPOINTMENT_CATEGORY_LABELS) {
+    return APPOINTMENT_CATEGORY_LABELS[category as AppointmentCategory]
+  }
+  return FALLBACK_TYPE
 }
 
 function getPaginationPages(totalPages: number, page: number): Array<number | '...'> {
@@ -63,19 +77,56 @@ function getPaginationPages(totalPages: number, page: number): Array<number | '.
   return pages
 }
 
+function HistoryEmptyState({
+  filtered,
+  onClearFilters,
+}: {
+  filtered: boolean
+  onClearFilters: () => void
+}) {
+  if (filtered) {
+    return (
+      <div className="tutor-history-empty">
+        <span className="tutor-history-empty-icon">
+          <SearchX size={26} />
+        </span>
+        <h2>Nenhum atendimento encontrado</h2>
+        <p>Nenhum registro corresponde à busca ou aos filtros aplicados.</p>
+        <button type="button" className="tutor-history-empty-action" onClick={onClearFilters}>
+          Limpar filtros
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="tutor-history-empty">
+      <span className="tutor-history-empty-icon">
+        <FileClock size={26} />
+      </span>
+      <h2>Nenhum atendimento por aqui ainda</h2>
+      <p>
+        Assim que o seu pet passar por uma consulta, vacinação ou exame, o registro aparece nesta
+        lista.
+      </p>
+    </div>
+  )
+}
+
 export function TutorPortalHistoryPage() {
   const navigate = useNavigate()
 
   const [items, setItems] = useState<TutorHistoryListItem[]>([])
+  const [petCount, setPetCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filterDate, setFilterDate] = useState('')
-  const [filterSpecies, setFilterSpecies] = useState('')
+  const [filterType, setFilterType] = useState('')
   const [appliedDate, setAppliedDate] = useState('')
-  const [appliedSpecies, setAppliedSpecies] = useState('')
+  const [appliedType, setAppliedType] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -102,20 +153,22 @@ export function TutorPortalHistoryPage() {
                 id: record.id,
                 patientId: history.patient.id,
                 patientName: history.patient.name,
-                tutorName: dashboard.tutor.fullName,
-                date: record.createdAt,
-                species: history.patient.species,
-                vetName: record.vet?.name || 'Nao informado',
-                record,
-                patient: history.patient,
+                // A data do atendimento é a do agendamento; createdAt é apenas
+                // quando o prontuário foi aberto no sistema.
+                date: record.appointment?.dateTime ?? record.createdAt,
+                type: getTypeLabel(record),
+                vetName: record.vet?.name || 'Não informado',
               })),
           )
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-        if (!cancelled) setItems(flattened)
+        if (!cancelled) {
+          setItems(flattened)
+          setPetCount(dashboard.pets.length)
+        }
       } catch (err: unknown) {
         if (!cancelled) {
-          setError(getErrorMessage(err, 'Nao foi possivel carregar o historico do tutor.'))
+          setError(getErrorMessage(err, 'Não foi possível carregar o histórico do tutor.'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -135,44 +188,58 @@ export function TutorPortalHistoryPage() {
     return items.filter((item) => {
       const matchesSearch =
         !normalizedSearch ||
+        item.type.toLowerCase().includes(normalizedSearch) ||
+        item.vetName.toLowerCase().includes(normalizedSearch) ||
         item.patientName.toLowerCase().includes(normalizedSearch) ||
-        item.tutorName.toLowerCase().includes(normalizedSearch) ||
-        item.species.toLowerCase().includes(normalizedSearch) ||
-        item.vetName.toLowerCase().includes(normalizedSearch)
+        formatDate(item.date).includes(normalizedSearch)
 
-      const matchesSpecies = !appliedSpecies || item.species === appliedSpecies
+      const matchesType = !appliedType || item.type === appliedType
       const matchesDate = matchesDateFilter(item.date, appliedDate)
 
-      return matchesSearch && matchesSpecies && matchesDate
+      return matchesSearch && matchesType && matchesDate
     })
-  }, [items, search, appliedSpecies, appliedDate])
+  }, [items, search, appliedType, appliedDate])
 
   useEffect(() => {
     setPage(1)
-  }, [search, appliedSpecies, appliedDate])
+  }, [search, appliedType, appliedDate])
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PER_PAGE))
   const paginatedItems = filteredItems.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-  const speciesOptions = Array.from(new Set(items.map((item) => item.species))).sort()
+  const typeOptions = Array.from(new Set(items.map((item) => item.type))).sort()
+
+  // O protótipo do tutor assume um único pet. Com vários, a coluna evita
+  // que atendimentos de pets diferentes fiquem indistinguíveis.
+  const showPatient = petCount > 1
+
+  const hasFilters = Boolean(search.trim() || appliedType || appliedDate)
+  const isEmpty = filteredItems.length === 0
+
+  function openRecord(item: TutorHistoryListItem) {
+    navigate(`/portal/historico/${item.id}/pacientes/${item.patientId}`, {
+      state: { from: '/portal/historico' },
+    })
+  }
 
   function handleApplyFilters() {
     setAppliedDate(filterDate)
-    setAppliedSpecies(filterSpecies)
+    setAppliedType(filterType)
     setShowFilters(false)
   }
 
   function handleClearFilters() {
     setFilterDate('')
-    setFilterSpecies('')
+    setFilterType('')
     setAppliedDate('')
-    setAppliedSpecies('')
+    setAppliedType('')
+    setSearch('')
     setShowFilters(false)
   }
 
   return (
     <div className="history-page">
       <div className="page-header">
-        <h1>Historico</h1>
+        <h1>Histórico</h1>
 
         <div className="history-actions">
           <div className="search-bar">
@@ -199,57 +266,83 @@ export function TutorPortalHistoryPage() {
       <div className="history-content">
         <div className="history-table-card">
           {loading ? (
-            <div className="history-state">Carregando historico...</div>
+            <div className="history-state">Carregando histórico...</div>
           ) : error ? (
             <div className="history-state">{error}</div>
+          ) : isEmpty ? (
+            <HistoryEmptyState filtered={hasFilters} onClearFilters={handleClearFilters} />
           ) : (
             <>
-              <table className="history-table">
+              {/* Desktop: tabela do protótipo */}
+              <table className="tutor-history-table">
                 <thead>
                   <tr>
-                    <th>Paciente</th>
-                    <th>Tutor</th>
+                    <th>Atendimento</th>
+                    {showPatient && <th>Pet</th>}
+                    <th>Profissional responsável</th>
                     <th>Data</th>
-                    <th>Especie</th>
-                    <th>Profissional responsavel</th>
-                    <th>Acao</th>
+                    <th className="tutor-history-action-col">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedItems.length > 0 ? (
-                    paginatedItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.patientName}</td>
-                        <td>{item.tutorName}</td>
-                        <td>{formatDate(item.date)}</td>
-                        <td>{item.species}</td>
-                        <td>{item.vetName}</td>
-                        <td>
-                          <button
-                            className="history-action-button"
-                            type="button"
-                            onClick={() =>
-                              navigate(`/portal/historico/${item.id}/pacientes/${item.patientId}`)
-                            }
-                          >
-                            <ArrowRightToLine size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="history-empty-row">
-                        Nenhuma consulta encontrada com os filtros atuais.
+                  {paginatedItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.type}</td>
+                      {showPatient && <td>{item.patientName}</td>}
+                      <td>{item.vetName}</td>
+                      <td>{formatDate(item.date)}</td>
+                      <td className="tutor-history-action-col">
+                        <button
+                          className="history-action-button"
+                          type="button"
+                          aria-label={`Ver detalhes do atendimento de ${formatDate(item.date)}`}
+                          onClick={() => openRecord(item)}
+                        >
+                          <ArrowRightToLine size={16} />
+                        </button>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
 
+              {/* Mobile: mesma informação em cartões tocáveis */}
+              <ul className="tutor-history-cards">
+                {paginatedItems.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className="tutor-history-card"
+                      onClick={() => openRecord(item)}
+                    >
+                      <span className="tutor-history-card-main">
+                        <span className="tutor-history-card-type">{item.type}</span>
+                        <span className="tutor-history-card-date">{formatDate(item.date)}</span>
+                      </span>
+
+                      {showPatient && (
+                        <span className="tutor-history-card-row">
+                          <small>Pet</small>
+                          {item.patientName}
+                        </span>
+                      )}
+
+                      <span className="tutor-history-card-row">
+                        <small>Profissional responsável</small>
+                        {item.vetName}
+                      </span>
+
+                      <span className="tutor-history-card-cta" aria-hidden="true">
+                        <ArrowRightToLine size={16} />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
               <div className="page-footer">
                 <span className="page-footer-info">
-                  Exibindo de {filteredItems.length === 0 ? 0 : (page - 1) * PER_PAGE + 1} a{' '}
+                  Exibindo de {(page - 1) * PER_PAGE + 1} a{' '}
                   {Math.min(page * PER_PAGE, filteredItems.length)} de {filteredItems.length}{' '}
                   resultados
                 </span>
@@ -258,6 +351,7 @@ export function TutorPortalHistoryPage() {
                   <button
                     className="history-pagination-button"
                     type="button"
+                    aria-label="Página anterior"
                     disabled={page === 1}
                     onClick={() => setPage((current) => current - 1)}
                   >
@@ -284,6 +378,7 @@ export function TutorPortalHistoryPage() {
                   <button
                     className="history-pagination-button"
                     type="button"
+                    aria-label="Próxima página"
                     disabled={page === totalPages}
                     onClick={() => setPage((current) => current + 1)}
                   >
@@ -300,9 +395,25 @@ export function TutorPortalHistoryPage() {
             <aside className="history-filters-card" onClick={(event) => event.stopPropagation()}>
               <div className="history-filters-header">
                 <h2>Filtrar</h2>
-                <button type="button" onClick={() => setShowFilters(false)}>
+                <button type="button" aria-label="Fechar filtros" onClick={() => setShowFilters(false)}>
                   ×
                 </button>
+              </div>
+
+              <div className="history-filter-group">
+                <label htmlFor="history-filter-type">Atendimento</label>
+                <select
+                  id="history-filter-type"
+                  value={filterType}
+                  onChange={(event) => setFilterType(event.target.value)}
+                >
+                  <option value="">Selecionar</option>
+                  {typeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="history-filter-group">
@@ -318,22 +429,6 @@ export function TutorPortalHistoryPage() {
                   />
                   <Calendar size={16} />
                 </div>
-              </div>
-
-              <div className="history-filter-group">
-                <label htmlFor="history-filter-species">Especie</label>
-                <select
-                  id="history-filter-species"
-                  value={filterSpecies}
-                  onChange={(event) => setFilterSpecies(event.target.value)}
-                >
-                  <option value="">Selecionar</option>
-                  {speciesOptions.map((species) => (
-                    <option key={species} value={species}>
-                      {species}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="history-filter-actions">

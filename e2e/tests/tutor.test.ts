@@ -99,8 +99,9 @@ describe('Tutor Flow E2E - Continuous Journey', function () {
     const filterToggleBtn = await driver.wait(until.elementLocated(By.css('.history-filter-toggle')), 8000);
     await filterToggleBtn.click();
 
-    const speciesSelect = await driver.wait(until.elementLocated(By.css('#history-filter-species')), 8000);
-    await speciesSelect.sendKeys('Cachorro');
+    // O histórico do tutor filtra por tipo de atendimento (US16), não por espécie
+    const typeSelect = await driver.wait(until.elementLocated(By.css('#history-filter-type')), 8000);
+    await typeSelect.sendKeys('Consulta');
 
     const applyFilterBtn = await driver.wait(until.elementLocated(By.css('.history-filter-actions button.primary')), 8000);
     await applyFilterBtn.click();
