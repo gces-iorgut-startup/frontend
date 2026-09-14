@@ -9,33 +9,28 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// ── Request Interceptor: attach JWT ──────────────
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
 
 // ── Response Interceptor: auto-refresh on 401 ────
 let isRefreshing = false
 let failedQueue: Array<{
-  resolve: (token: string) => void
+  resolve: () => void
   reject: (error: unknown) => void
 }> = []
 
-function processQueue(error: unknown, token: string | null) {
+function processQueue(error: unknown) {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
     } else {
-      prom.resolve(token!)
+      prom.resolve()
     }
   })
   failedQueue = []
@@ -50,10 +45,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         // Queue this request until refresh is done
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
+        }).then(() => {
           return api(originalRequest)
         })
       }
@@ -61,30 +55,19 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = useAuthStore.getState().refreshToken
-
-      if (!refreshToken) {
-        useAuthStore.getState().logout()
-        isRefreshing = false
-        return Promise.reject(error)
-      }
-
       try {
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, undefined, {
+          withCredentials: true
         })
 
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken, user } =
-          response.data
+        const { user } = response.data
+        useAuthStore.getState().setAuth(user)
 
-        useAuthStore.getState().setAuth(user, newAccessToken, newRefreshToken)
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-        processQueue(null, newAccessToken)
+        processQueue(null)
 
         return api(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError, null)
+        processQueue(refreshError)
         useAuthStore.getState().logout()
         return Promise.reject(refreshError)
       } finally {
