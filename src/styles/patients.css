@@ -965,7 +965,7 @@
 
 .patient-edit-modal {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 22px 40px rgba(0, 0, 0, 0.2);
@@ -1071,8 +1071,8 @@
 
 .patient-edit-modal-actions {
   margin-top: 24px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 14px;
 }
@@ -1080,12 +1080,14 @@
 .patient-edit-modal-actions button {
   border: none;
   border-radius: 8px;
-  height: 42px;
-  padding: 0 16px;
+  min-height: 42px;
+  height: auto;
+  padding: 8px 18px;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .patient-edit-modal-actions .ghost {
@@ -1229,7 +1231,8 @@
   }
 
   .patient-edit-modal-actions button {
-    height: 42px;
+    min-height: 42px;
+    height: auto;
   }
 
   .patients-filter-btn,
