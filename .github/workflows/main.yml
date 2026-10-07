@@ -84,6 +84,14 @@ jobs:
       - name: Verificar Chrome instalado
         run: google-chrome --version
 
+      # Segredo aleatório por execução para as rotas /test do backend. Fica mascarado
+      # no log e nunca é gravado no repositório.
+      - name: Gerar segredo das rotas de teste
+        run: |
+          secret="$(openssl rand -hex 24)"
+          echo "::add-mask::$secret"
+          echo "E2E_TEST_SECRET=$secret" >> "$GITHUB_ENV"
+
       - name: Instalar dependências do backend
         working-directory: backend-api
         run: npm ci --legacy-peer-deps
@@ -110,6 +118,7 @@ jobs:
           NODE_ENV: test
           PORT: 3000
           CORS_ORIGIN: '*'
+          E2E_TEST_SECRET: ${{ env.E2E_TEST_SECRET }}
         run: |
           npm run build
           nohup node dist/server.js > backend.log 2>&1 &
@@ -149,6 +158,7 @@ jobs:
           BASE_URL: http://127.0.0.1:5173
           API_URL: http://localhost:3000
           HEADLESS: 'true'
+          E2E_TEST_SECRET: ${{ env.E2E_TEST_SECRET }}
         run: npm run test:e2e
 
       - name: Upload dos logs e diagnósticos do E2E
