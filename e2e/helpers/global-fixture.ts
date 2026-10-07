@@ -15,6 +15,8 @@ import {
   TestContext,
 } from './api.helper';
 import { TEST_DATA, TEST_PASSWORD } from '../config/test.config';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface SharedData {
   ctx: TestContext;
@@ -23,9 +25,9 @@ export interface SharedData {
   tutor: TestTutor;
   patientDog: TestPatient;
   patientCat: TestPatient;
-  tutorCredentials: { userId: string; email: string; temporaryPassword: string };
+  tutorCredentials: { userId: string; email: string; password: string };
   appointment: TestAppointment;
-  dynamicTutorCredentials?: { email: string; temporaryPassword: string; petName: string; tutorName: string };
+  dynamicTutorCredentials?: { email: string; password: string; petName: string; tutorName: string };
 }
 
 let sharedData: SharedData | null = null;
@@ -92,10 +94,44 @@ export async function setupGlobalFixture(): Promise<void> {
   setupDone = true;
 }
 
-import { WebDriver } from 'selenium-webdriver';
+import { logging, WebDriver } from 'selenium-webdriver';
 import { createDriver } from './driver.factory';
 
 let globalDriver: WebDriver | null = null;
+
+const ARTIFACTS_DIR = path.resolve(process.cwd(), 'e2e-artifacts');
+
+// Registra o estado do navegador do teste que falhou: imprime um resumo no log
+// (URL, texto visível e erros do console) e salva o screenshot em e2e-artifacts/.
+// Cada etapa é independente e nunca lança erro, para não mascarar a falha original.
+async function saveFailureDiagnostics(driver: WebDriver, title: string): Promise<void> {
+  const summary: string[] = [`----- DIAGNÓSTICO DA FALHA: ${title} -----`];
+
+  try {
+    summary.push(`URL: ${await driver.getCurrentUrl()}`);
+  } catch { /* ignore */ }
+
+  try {
+    const name = title.replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 80);
+    fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(ARTIFACTS_DIR, `${name}.png`), await driver.takeScreenshot(), 'base64');
+  } catch { /* ignore */ }
+
+  try {
+    const text = await driver.executeScript<string>('return document.body ? document.body.innerText : ""');
+    summary.push(`Texto visível na página (até 1500 caracteres):\n${String(text).slice(0, 1500)}`);
+  } catch { /* ignore */ }
+
+  try {
+    const entries = await driver.manage().logs().get(logging.Type.BROWSER);
+    const problems = entries
+      .filter((entry) => entry.level.name === 'SEVERE' || entry.level.name === 'WARNING')
+      .map((entry) => `[${entry.level.name}] ${entry.message}`);
+    summary.push(`Console do navegador (${problems.length} erros/avisos, até 30):\n${problems.slice(0, 30).join('\n')}`);
+  } catch { /* ignore */ }
+
+  console.log(summary.join('\n'));
+}
 
 export async function getGlobalDriver(): Promise<WebDriver> {
   if (!globalDriver) {
@@ -146,6 +182,11 @@ export const mochaHooks = {
     } catch { /* ignore */ }
 
     await setupGlobalFixture();
+  },
+  async afterEach(this: Mocha.Context) {
+    if (this.currentTest?.state === 'failed' && globalDriver) {
+      await saveFailureDiagnostics(globalDriver, this.currentTest.fullTitle());
+    }
   },
   async afterAll() {
 

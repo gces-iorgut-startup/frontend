@@ -22,12 +22,12 @@ describe('Tutor Flow E2E - Continuous Journey', function () {
     const sharedData = getSharedData();
     if (sharedData.dynamicTutorCredentials) {
       tutorEmail = sharedData.dynamicTutorCredentials.email;
-      tutorPassword = sharedData.dynamicTutorCredentials.temporaryPassword;
+      tutorPassword = sharedData.dynamicTutorCredentials.password;
       dogName = sharedData.dynamicTutorCredentials.petName;
       catName = '';
     } else {
       tutorEmail = sharedData.tutorCredentials.email;
-      tutorPassword = sharedData.tutorCredentials.temporaryPassword;
+      tutorPassword = sharedData.tutorCredentials.password;
       dogName = sharedData.patientDog.name;
       catName = sharedData.patientCat.name;
     }

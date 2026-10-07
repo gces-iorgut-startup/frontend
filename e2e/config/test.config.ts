@@ -4,7 +4,8 @@ dotenv.config();
 export const ENV = {
   BASE_URL: process.env.BASE_URL,
   API_URL: process.env.API_URL,
-  HEADLESS: false, // Booleano false direto (abre o navegador por padrão)
+  // Abre o navegador por padrão; no CI defina HEADLESS=true
+  HEADLESS: process.env.HEADLESS === 'true',
   TIMEOUT: 60000,
   LONG_TIMEOUT: 90000,
   SLOW_MO: 1000

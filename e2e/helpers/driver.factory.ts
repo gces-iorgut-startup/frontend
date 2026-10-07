@@ -1,9 +1,15 @@
-import { Builder, WebDriver } from 'selenium-webdriver';
+import { Builder, logging, WebDriver } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome';
 import { ENV } from '../config/test.config';
 
 export async function createDriver(): Promise<WebDriver> {
   const options = new chrome.Options();
+
+  // Captura o console do navegador (inclui falhas de requisição da API) para diagnóstico
+  const loggingPrefs = new logging.Preferences();
+  loggingPrefs.setLevel(logging.Type.BROWSER, logging.Level.ALL);
+  options.setLoggingPrefs(loggingPrefs);
+
   options.addArguments('--window-size=1920,1080');
   options.addArguments('--disable-gpu');
   options.addArguments('--no-sandbox');

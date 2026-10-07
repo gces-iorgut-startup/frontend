@@ -24,3 +24,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Diagnósticos de falha dos testes E2E
+e2e-artifacts
