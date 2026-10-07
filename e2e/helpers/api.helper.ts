@@ -207,7 +207,7 @@ export async function createTutorAccount(
   user: TestUser,
   tutorId: string,
   email: string = TEST_DATA.TUTOR_ACCOUNT_EMAIL
-): Promise<{ userId: string; email: string; temporaryPassword: string }> {
+): Promise<{ userId: string; email: string; password: string }> {
   const client = createApiClient();
   const res = await client.post(
     `/tutors/${tutorId}/account`,
@@ -215,11 +215,14 @@ export async function createTutorAccount(
     { headers: authHeaders(user.accessToken) }
   );
 
+  // A API não devolve mais senha temporária: o tutor define a senha no primeiro acesso
+  const password = await activateTutorAccount(res.data.email);
+
   if (res.data.userId) {
     const tutorUser: TestUser = {
       id: res.data.userId,
       email: res.data.email,
-      password: res.data.temporaryPassword,
+      password,
       name: 'Tutor',
       role: 'TUTOR',
       accessToken: '',
@@ -231,11 +234,31 @@ export async function createTutorAccount(
     if (tutor) {
       tutor.userId = res.data.userId;
       tutor.email = res.data.email;
-      tutor.password = res.data.temporaryPassword;
+      tutor.password = password;
     }
   }
 
-  return res.data;
+  return { ...res.data, password };
+}
+
+/**
+ * Define a senha de uma conta de tutor usando o fluxo de primeiro acesso.
+ * Como o CI não envia e-mails, o token é gerado pela rota de teste
+ * POST /test/first-access-token (disponível apenas com NODE_ENV=test).
+ */
+export async function activateTutorAccount(
+  email: string,
+  password: string = TEST_PASSWORD
+): Promise<string> {
+  const client = createApiClient();
+
+  const tokenRes = await client.post('/test/first-access-token', { email });
+  await client.post('/auth/set-password', {
+    token: tokenRes.data.token,
+    newPassword: password,
+  });
+
+  return password;
 }
 
 export async function createPatient(

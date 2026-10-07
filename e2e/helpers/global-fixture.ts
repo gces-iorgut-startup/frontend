@@ -23,9 +23,9 @@ export interface SharedData {
   tutor: TestTutor;
   patientDog: TestPatient;
   patientCat: TestPatient;
-  tutorCredentials: { userId: string; email: string; temporaryPassword: string };
+  tutorCredentials: { userId: string; email: string; password: string };
   appointment: TestAppointment;
-  dynamicTutorCredentials?: { email: string; temporaryPassword: string; petName: string; tutorName: string };
+  dynamicTutorCredentials?: { email: string; password: string; petName: string; tutorName: string };
 }
 
 let sharedData: SharedData | null = null;
