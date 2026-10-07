@@ -72,10 +72,11 @@ jobs:
           path: backend-api
           persist-credentials: false
 
+      # Node 20 é o runtime de produção do backend; o E2E testa nele
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
@@ -112,9 +113,6 @@ jobs:
           DATABASE_URL: postgresql://iougurt:iougurt@localhost:5432/iougurt_test?schema=public
           JWT_SECRET: ci-jwt-secret
           PASSWORD_RESET_SECRET: ci-password-reset-secret
-          # Chave fictícia: o SDK do Resend lança erro se estiver vazia, e isso
-          # derruba POST /tutors/:id/account com 500. Sem MAIL_FROM nenhum e-mail é enviado.
-          RESEND_API_KEY: ci-resend-key
           NODE_ENV: test
           PORT: 3000
           CORS_ORIGIN: '*'
