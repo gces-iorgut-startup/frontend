@@ -101,35 +101,50 @@ let globalDriver: WebDriver | null = null;
 
 const ARTIFACTS_DIR = path.resolve(process.cwd(), 'e2e-artifacts');
 
-// Salva screenshot, HTML, URL e console do navegador do teste que falhou.
-// Cada etapa é independente e nunca lança erro, para não mascarar a falha original.
+// Registra o estado do navegador do teste que falhou: imprime um resumo no log
+// (URL, texto visível e erros do console) e salva screenshot, HTML e console completos
+// em e2e-artifacts/. Cada etapa é independente e nunca lança erro, para não
+// mascarar a falha original.
 async function saveFailureDiagnostics(driver: WebDriver, title: string): Promise<void> {
   const name = title.replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 80);
   const target = (extension: string) => path.join(ARTIFACTS_DIR, `${name}.${extension}`);
+  const summary: string[] = [`----- DIAGNÓSTICO DA FALHA: ${title} -----`];
 
+  let canWrite = true;
   try {
     fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
-  } catch { return; }
+  } catch { canWrite = false; }
 
   try {
-    fs.writeFileSync(target('url.txt'), await driver.getCurrentUrl());
+    const url = await driver.getCurrentUrl();
+    summary.push(`URL: ${url}`);
+    if (canWrite) fs.writeFileSync(target('url.txt'), url);
   } catch { /* ignore */ }
 
   try {
-    fs.writeFileSync(target('png'), await driver.takeScreenshot(), 'base64');
+    const screenshot = await driver.takeScreenshot();
+    if (canWrite) fs.writeFileSync(target('png'), screenshot, 'base64');
   } catch { /* ignore */ }
 
   try {
-    fs.writeFileSync(target('html'), await driver.getPageSource());
+    const html = await driver.getPageSource();
+    if (canWrite) fs.writeFileSync(target('html'), html);
+  } catch { /* ignore */ }
+
+  try {
+    const text = await driver.executeScript<string>('return document.body ? document.body.innerText : ""');
+    summary.push(`Texto visível na página (até 1500 caracteres):\n${String(text).slice(0, 1500)}`);
   } catch { /* ignore */ }
 
   try {
     const entries = await driver.manage().logs().get(logging.Type.BROWSER);
-    fs.writeFileSync(
-      target('console.txt'),
-      entries.map((entry) => `[${entry.level.name}] ${entry.message}`).join('\n'),
-    );
+    const lines = entries.map((entry) => `[${entry.level.name}] ${entry.message}`);
+    if (canWrite) fs.writeFileSync(target('console.txt'), lines.join('\n'));
+    const problems = lines.filter((line) => line.startsWith('[SEVERE]') || line.startsWith('[WARNING]'));
+    summary.push(`Console do navegador (${problems.length} erros/avisos, até 30):\n${problems.slice(0, 30).join('\n')}`);
   } catch { /* ignore */ }
+
+  console.log(summary.join('\n'));
 }
 
 export async function getGlobalDriver(): Promise<WebDriver> {
