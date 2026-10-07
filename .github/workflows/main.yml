@@ -140,7 +140,7 @@ jobs:
           HEADLESS: 'true'
         run: npm run test:e2e
 
-      - name: Upload dos logs do backend e frontend
+      - name: Upload dos logs e diagnósticos do E2E
         uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -148,6 +148,7 @@ jobs:
           path: |
             backend-api/backend.log
             frontend.log
+            e2e-artifacts
           retention-days: 7
 
   build-docker:

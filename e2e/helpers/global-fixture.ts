@@ -15,6 +15,8 @@ import {
   TestContext,
 } from './api.helper';
 import { TEST_DATA, TEST_PASSWORD } from '../config/test.config';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface SharedData {
   ctx: TestContext;
@@ -92,10 +94,43 @@ export async function setupGlobalFixture(): Promise<void> {
   setupDone = true;
 }
 
-import { WebDriver } from 'selenium-webdriver';
+import { logging, WebDriver } from 'selenium-webdriver';
 import { createDriver } from './driver.factory';
 
 let globalDriver: WebDriver | null = null;
+
+const ARTIFACTS_DIR = path.resolve(process.cwd(), 'e2e-artifacts');
+
+// Salva screenshot, HTML, URL e console do navegador do teste que falhou.
+// Cada etapa é independente e nunca lança erro, para não mascarar a falha original.
+async function saveFailureDiagnostics(driver: WebDriver, title: string): Promise<void> {
+  const name = title.replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 80);
+  const target = (extension: string) => path.join(ARTIFACTS_DIR, `${name}.${extension}`);
+
+  try {
+    fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
+  } catch { return; }
+
+  try {
+    fs.writeFileSync(target('url.txt'), await driver.getCurrentUrl());
+  } catch { /* ignore */ }
+
+  try {
+    fs.writeFileSync(target('png'), await driver.takeScreenshot(), 'base64');
+  } catch { /* ignore */ }
+
+  try {
+    fs.writeFileSync(target('html'), await driver.getPageSource());
+  } catch { /* ignore */ }
+
+  try {
+    const entries = await driver.manage().logs().get(logging.Type.BROWSER);
+    fs.writeFileSync(
+      target('console.txt'),
+      entries.map((entry) => `[${entry.level.name}] ${entry.message}`).join('\n'),
+    );
+  } catch { /* ignore */ }
+}
 
 export async function getGlobalDriver(): Promise<WebDriver> {
   if (!globalDriver) {
@@ -146,6 +181,11 @@ export const mochaHooks = {
     } catch { /* ignore */ }
 
     await setupGlobalFixture();
+  },
+  async afterEach(this: Mocha.Context) {
+    if (this.currentTest?.state === 'failed' && globalDriver) {
+      await saveFailureDiagnostics(globalDriver, this.currentTest.fullTitle());
+    }
   },
   async afterAll() {
 
