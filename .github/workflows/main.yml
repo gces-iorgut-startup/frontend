@@ -32,6 +32,121 @@ jobs:
       - name: Testar Build
         run: npm run build
 
+  e2e:
+    name: Testes E2E (Selenium + Chrome headless)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: iougurt
+          POSTGRES_PASSWORD: iougurt
+          POSTGRES_DB: iougurt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout do frontend
+        uses: actions/checkout@v4
+
+      # O backend é baixado do repositório do fork e roda na branch main
+      - name: Checkout do backend
+        uses: actions/checkout@v4
+        with:
+          repository: gces-iorgut-startup/backend
+          ref: main
+          path: backend-api
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            backend-api/package-lock.json
+
+      - name: Verificar Chrome instalado
+        run: google-chrome --version
+
+      - name: Instalar dependências do backend
+        working-directory: backend-api
+        run: npm ci --legacy-peer-deps
+
+      - name: Gerar Prisma Client do backend
+        working-directory: backend-api
+        run: npx prisma generate
+
+      - name: Aplicar migrations no PostgreSQL
+        working-directory: backend-api
+        env:
+          DATABASE_URL: postgresql://iougurt:iougurt@localhost:5432/iougurt_test?schema=public
+        run: npx prisma migrate deploy
+
+      - name: Compilar e iniciar o backend
+        working-directory: backend-api
+        env:
+          DATABASE_URL: postgresql://iougurt:iougurt@localhost:5432/iougurt_test?schema=public
+          JWT_SECRET: ci-jwt-secret
+          PASSWORD_RESET_SECRET: ci-password-reset-secret
+          NODE_ENV: test
+          PORT: 3000
+          CORS_ORIGIN: '*'
+        run: |
+          npm run build
+          nohup node dist/server.js > backend.log 2>&1 &
+
+      - name: Instalar dependências do frontend
+        run: npm ci
+
+      - name: Compilar o frontend apontando para a API local
+        env:
+          VITE_API_URL: http://localhost:3000
+        run: npm run build
+
+      - name: Servir o frontend
+        run: |
+          nohup npx vite preview --host 127.0.0.1 --port 5173 --strictPort > frontend.log 2>&1 &
+
+      - name: Aguardar backend e frontend ficarem prontos
+        run: |
+          for url in http://localhost:3000/health http://127.0.0.1:5173; do
+            for i in $(seq 1 60); do
+              if curl -fsS "$url" > /dev/null; then
+                echo "OK: $url"
+                break
+              fi
+              if [ "$i" -eq 60 ]; then
+                echo "Timeout aguardando $url"
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Rodar testes E2E
+        env:
+          BASE_URL: http://127.0.0.1:5173
+          API_URL: http://localhost:3000
+          HEADLESS: 'true'
+        run: npm run test:e2e
+
+      - name: Upload dos logs do backend e frontend
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-logs
+          path: |
+            backend-api/backend.log
+            frontend.log
+          retention-days: 7
+
   build-docker:
     name: Build e Push da Imagem Docker
     needs: lint-e-build-test
