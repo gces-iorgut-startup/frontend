@@ -45,7 +45,7 @@ export class PatientDetailsPage extends BasePage {
   async getActiveTabText(): Promise<string> {
     const tabElements = await this.findElements(this.tabs);
     for (const tab of tabElements) {
-      const className = await tab.getAttribute('class');
+      const className = (await tab.getAttribute('class')) ?? '';
       if (className.includes('active')) {
         return tab.getText();
       }

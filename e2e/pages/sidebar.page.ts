@@ -54,7 +54,7 @@ export class SidebarPage extends BasePage {
     if (!locator) return false;
     try {
       const el = await this.driver.findElement(locator);
-      const className = await el.getAttribute('class');
+      const className = (await el.getAttribute('class')) ?? '';
       return className.includes('active');
     } catch {
       return false;
