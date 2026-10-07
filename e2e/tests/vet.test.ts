@@ -1,7 +1,7 @@
 import { By, until, WebDriver } from 'selenium-webdriver';
 import { expect } from 'chai';
 import { getGlobalDriver, getSharedData } from '../helpers/global-fixture';
-import { activateTutorAccount } from '../helpers/api.helper';
+import { activateTutorAccount, setUserCrmv } from '../helpers/api.helper';
 import { ENV, TEST_DATA } from '../config/test.config';
 import { LoginPage } from '../pages/login.page';
 import { RegisterPage } from '../pages/register.page';
@@ -317,6 +317,9 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
   });
 
   it('Passo 6: Deve criar um terceiro agendamento e iniciar atendimento clínico', async function () {
+    // O OWNER só inicia prontuário com CRMV cadastrado (regra BE-01) e o cadastro pela tela não pede CRMV
+    await setUserCrmv(TEST_DATA.OWNER_EMAIL, TEST_DATA.OWNER_PASSWORD, 'CRMV-DF 12345');
+
     const sidebar = new SidebarPage(driver);
     await sidebar.navigateTo('agenda');
 
@@ -464,7 +467,8 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
     // A tela mostra só o e-mail de acesso: a senha é definida no primeiro acesso
     await driver.wait(until.elementLocated(By.css('.patient-details-access-result')), 10000);
 
-    const closeBtn = await driver.findElement(By.css('.patient-edit-modal button.ghost'));
+    // Na tela de resultado o único botão é "Fechar" (classe confirm save)
+    const closeBtn = await driver.findElement(By.css('.patient-edit-modal .confirm.save'));
     await closeBtn.click();
 
     const password = await activateTutorAccount(tutorEmail);

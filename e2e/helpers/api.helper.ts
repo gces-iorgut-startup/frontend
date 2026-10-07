@@ -147,6 +147,20 @@ export async function loginUser(
   return res.data;
 }
 
+/**
+ * Define o CRMV do usuário (PATCH /auth/me). O OWNER só consegue iniciar um
+ * prontuário se tiver CRMV cadastrado, e a tela de cadastro não tem esse campo.
+ */
+export async function setUserCrmv(
+  email: string,
+  password: string,
+  crmv: string
+): Promise<void> {
+  const { accessToken } = await loginUser(email, password);
+  const client = createApiClient();
+  await client.patch('/auth/me', { crmv }, { headers: authHeaders(accessToken) });
+}
+
 export async function refreshUserToken(user: TestUser): Promise<void> {
   const client = createApiClient();
   try {

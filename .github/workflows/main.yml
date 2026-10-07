@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+# Os jobs só leem o código; o push da imagem usa as credenciais do Docker Hub
+permissions:
+  contents: read
+
 jobs:
   lint-e-build-test:
     name: Linter e Build Check
@@ -54,14 +58,19 @@ jobs:
     steps:
       - name: Checkout do frontend
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      # O backend é baixado do repositório do fork e roda na branch main
+      # O backend é baixado do repositório do fork e roda na branch main.
+      # persist-credentials: false evita deixar o token no .git, onde os scripts
+      # do npm ci poderiam lê-lo.
       - name: Checkout do backend
         uses: actions/checkout@v4
         with:
           repository: gces-iorgut-startup/backend
           ref: main
           path: backend-api
+          persist-credentials: false
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -108,12 +117,14 @@ jobs:
       - name: Instalar dependências do frontend
         run: npm ci
 
-      - name: Compilar o frontend apontando para a API local
-        env:
-          VITE_API_URL: http://localhost:3000
+      # O frontend chama /api na mesma origem (como o nginx em produção), então o
+      # navegador não faz requisições cross-origin e o CORS do backend não entra em jogo.
+      - name: Compilar o frontend
         run: npm run build
 
-      - name: Servir o frontend
+      - name: Servir o frontend com proxy de /api para o backend local
+        env:
+          VITE_DEV_API_PROXY: http://localhost:3000
         run: |
           nohup npx vite preview --host 127.0.0.1 --port 5173 --strictPort > frontend.log 2>&1 &
 
