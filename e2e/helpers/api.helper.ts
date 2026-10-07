@@ -43,10 +43,16 @@ function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
+// As rotas /test do backend exigem o segredo no header x-e2e-secret
+function testRouteHeaders(): Record<string, string> {
+  return ENV.E2E_TEST_SECRET ? { 'x-e2e-secret': ENV.E2E_TEST_SECRET } : {};
+}
+
 function createApiClient(): AxiosInstance {
+  // Sem Content-Type fixo: o axios o define como JSON quando há corpo. Com o header
+  // fixo, DELETE sem corpo é recusado pelo Fastify com 400.
   return axios.create({
     baseURL: ENV.API_URL,
-    headers: { 'Content-Type': 'application/json' },
     timeout: ENV.TIMEOUT,
   });
 }
@@ -266,7 +272,11 @@ export async function activateTutorAccount(
 ): Promise<string> {
   const client = createApiClient();
 
-  const tokenRes = await client.post('/test/first-access-token', { email });
+  const tokenRes = await client.post(
+    '/test/first-access-token',
+    { email },
+    { headers: testRouteHeaders() }
+  );
   await client.post('/auth/set-password', {
     token: tokenRes.data.token,
     newPassword: password,
@@ -344,6 +354,6 @@ export async function cleanupTestClinic(owner: TestUser): Promise<void> {
   const client = createApiClient();
   await client.delete(
     `/test/clinics/${owner.clinicId}`,
-    { headers: authHeaders(owner.accessToken) }
+    { headers: { ...authHeaders(owner.accessToken), ...testRouteHeaders() } }
   );
 }

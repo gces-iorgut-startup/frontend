@@ -22,7 +22,7 @@ export async function createDriver(): Promise<WebDriver> {
   options.addArguments('--disable-sync');
   options.addArguments('--disable-notifications');
   options.addArguments('--disable-logging');
-  options.excludeSwitches(['enable-logging']);
+  options.excludeSwitches('enable-logging');
 
   if (ENV.HEADLESS) {
     options.addArguments('--headless=new');
