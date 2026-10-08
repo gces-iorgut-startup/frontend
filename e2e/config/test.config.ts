@@ -1,10 +1,21 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Variável de ambiente ${name} não definida (veja o .env.example).`);
+  }
+  return value;
+}
+
 export const ENV = {
-  BASE_URL: process.env.BASE_URL,
-  API_URL: process.env.API_URL,
-  HEADLESS: false, // Booleano false direto (abre o navegador por padrão)
+  BASE_URL: requireEnv('BASE_URL'),
+  API_URL: requireEnv('API_URL'),
+  // Segredo das rotas /test do backend (header x-e2e-secret); opcional enquanto o backend não o exigir
+  E2E_TEST_SECRET: process.env.E2E_TEST_SECRET ?? '',
+  // Abre o navegador por padrão; no CI defina HEADLESS=true
+  HEADLESS: process.env.HEADLESS === 'true',
   TIMEOUT: 60000,
   LONG_TIMEOUT: 90000,
   SLOW_MO: 1000

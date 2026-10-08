@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { authService } from '../../lib/authService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { useAuthStore } from '../../stores/authStore'
@@ -13,13 +13,29 @@ export function TutorLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const setAuth = useAuthStore((state) => state.setAuth)
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Mensagem vinda da tela de primeiro acesso (senha definida)
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message)
+      window.history.replaceState({}, document.title)
+
+      const timer = setTimeout(() => {
+        setSuccessMessage('')
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [location])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
+    setSuccessMessage('')
     setLoading(true)
 
     try {
@@ -40,7 +56,13 @@ export function TutorLoginPage() {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page relative">
+      {successMessage && (
+        <div className="auth-success-toast">
+          <CheckCircle size={18} />
+          {successMessage}
+        </div>
+      )}
       <PawSvg className="auth-deco auth-deco-paw" />
       <FishSvg className="auth-deco auth-deco-fish" />
       <BoneSvg className="auth-deco auth-deco-bone" />

@@ -46,12 +46,12 @@ export class BasePage {
 
   async getValue(locator: By): Promise<string> {
     const el = await waitForVisible(this.driver, locator);
-    return el.getAttribute('value');
+    return (await el.getAttribute('value')) ?? '';
   }
 
   async getAttribute(locator: By, attr: string): Promise<string> {
     const el = await waitForVisible(this.driver, locator);
-    return el.getAttribute(attr);
+    return (await el.getAttribute(attr)) ?? '';
   }
 
   async isDisplayed(locator: By, timeout: number = 5000): Promise<boolean> {

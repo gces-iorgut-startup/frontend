@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ClipboardPlus,
-  Copy,
   Download,
   Edit2,
   FileText,
@@ -182,7 +181,6 @@ export function PatientDetailsPage() {
   const [tutorAccessError, setTutorAccessError] = useState('')
   const [createdTutorAccess, setCreatedTutorAccess] =
     useState<CreateTutorAccountResponse | null>(null)
-  const [copiedPassword, setCopiedPassword] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -266,18 +264,6 @@ export function PatientDetailsPage() {
       setTutorAccessError(getErrorMessage(err, 'Nao foi possivel criar o acesso do tutor.'))
     } finally {
       setCreatingTutorAccess(false)
-    }
-  }
-
-  async function handleCopyPassword() {
-    if (!createdTutorAccess) return
-
-    try {
-      await navigator.clipboard.writeText(createdTutorAccess.temporaryPassword)
-      setCopiedPassword(true)
-      setTimeout(() => setCopiedPassword(false), 1800)
-    } catch {
-      setCopiedPassword(false)
     }
   }
 
@@ -450,7 +436,6 @@ export function PatientDetailsPage() {
                   setTutorAccessEmail(patient.tutor?.email ?? '')
                   setTutorAccessError('')
                   setCreatedTutorAccess(null)
-                  setCopiedPassword(false)
                   setShowTutorAccessModal(true)
                 }}
               >
@@ -683,46 +668,28 @@ export function PatientDetailsPage() {
 
             {createdTutorAccess ? (
               <>
-                <p>Conta criada com sucesso. Guarde esta senha temporaria com seguranca.</p>
+                <p>Conta criada com sucesso! O link para definir a senha de acesso foi enviado para o e-mail cadastrado.</p>
 
                 <div className="patient-details-access-result">
                   <div>
-                    <span>E-mail</span>
+                    <span>E-mail de acesso</span>
                     <strong>{createdTutorAccess.email}</strong>
                   </div>
-                  <div>
-                    <span>Senha temporaria</span>
-                    <strong>{createdTutorAccess.temporaryPassword}</strong>
-                  </div>
                 </div>
-
-                {copiedPassword ? (
-                  <p className="patient-details-access-feedback success">
-                    Senha copiada para a area de transferencia.
-                  </p>
-                ) : null}
 
                 <div className="patient-edit-modal-actions">
                   <button
                     type="button"
-                    className="ghost"
+                    className="confirm save"
                     onClick={() => setShowTutorAccessModal(false)}
                   >
                     Fechar
-                  </button>
-                  <button
-                    type="button"
-                    className="confirm save"
-                    onClick={() => void handleCopyPassword()}
-                  >
-                    <Copy size={15} />
-                    Copiar senha
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <p>Defina o e-mail de acesso para gerar a senha temporaria do tutor.</p>
+                <p>Defina o e-mail de acesso. O link para criação e redefinição de senha será enviado para este e-mail.</p>
 
                 <div className="patient-details-access-form">
                   <label htmlFor="tutor-access-email">E-mail de acesso</label>
@@ -753,7 +720,7 @@ export function PatientDetailsPage() {
                     onClick={() => void handleCreateTutorAccess()}
                     disabled={creatingTutorAccess}
                   >
-                    {creatingTutorAccess ? 'Gerando...' : 'Gerar senha'}
+                    {creatingTutorAccess ? 'Enviando...' : 'Enviar link de acesso'}
                   </button>
                 </div>
               </>
