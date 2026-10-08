@@ -9,6 +9,7 @@ import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
+import { FirstAccessPage } from './pages/auth/FirstAccessPage'
 import { TutorLoginPage } from './pages/auth/TutorLoginPage'
 
 // Layout
@@ -90,6 +91,16 @@ export default function App() {
           element={
             <PublicRoute>
               <ResetPasswordPage />
+            </PublicRoute>
+          }
+        />
+
+        {/* Link do e-mail de convite do tutor (definição da primeira senha) */}
+        <Route
+          path="/primeiro-acesso"
+          element={
+            <PublicRoute>
+              <FirstAccessPage />
             </PublicRoute>
           }
         />
