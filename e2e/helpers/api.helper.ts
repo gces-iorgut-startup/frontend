@@ -357,3 +357,28 @@ export async function cleanupTestClinic(owner: TestUser): Promise<void> {
     { headers: { ...authHeaders(owner.accessToken), ...testRouteHeaders() } }
   );
 }
+/** Cria a conta do tutor SEM definir a senha (o tutor ainda precisa do primeiro acesso). */
+export async function createPendingTutorAccount(
+  user: TestUser,
+  tutorId: string,
+  email: string
+): Promise<{ userId: string; email: string }> {
+  const client = createApiClient();
+  const res = await client.post(
+    `/tutors/${tutorId}/account`,
+    { email },
+    { headers: authHeaders(user.accessToken) }
+  );
+  return res.data;
+}
+
+/** Gera o token de primeiro acesso (rota de teste, substitui o e-mail de convite). */
+export async function getFirstAccessToken(email: string): Promise<string> {
+  const client = createApiClient();
+  const res = await client.post(
+    '/test/first-access-token',
+    { email },
+    { headers: testRouteHeaders() }
+  );
+  return res.data.token;
+}
