@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../lib/authService'
 import { clinicService } from '../../lib/clinicService'
 import { getErrorMessage } from '../../lib/errorMessage'
-import { isValidCnpj, maskCnpj, onlyDigits } from '../../lib/documents'
+import { isValidCnpj, maskCnpj, maskPhone, onlyDigits } from '../../lib/documents'
 import type { User } from '../../types'
 import '../../styles/settings.css'
 
@@ -16,21 +16,6 @@ function patchCurrentUser(partial: Partial<User>) {
 }
 
 type FeedbackState = { kind: 'success' | 'error'; message: string } | null
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
-
-  if (digits.length === 0) return ''
-  if (digits.length <= 2) return `(${digits}`
-
-  const ddd = digits.slice(0, 2)
-  const rest = digits.slice(2)
-
-  if (rest.length <= 4) return `(${ddd}) ${rest}`
-  if (rest.length <= 8) return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`
-
-  return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`
-}
 
 function normalizeCrmv(value: string) {
   const trimmed = value.trim().toUpperCase()
@@ -82,7 +67,7 @@ export function SettingsPage() {
             name: clinicRes.name ?? '',
             cnpj: maskCnpj(clinicRes.cnpj ?? ''),
             address: clinicRes.address ?? '',
-            phone: formatPhone(clinicRes.phone ?? ''),
+            phone: maskPhone(clinicRes.phone ?? ''),
           })
         }
       } catch (err: unknown) {
@@ -124,7 +109,7 @@ export function SettingsPage() {
         name: updated.name ?? '',
         cnpj: maskCnpj(updated.cnpj ?? ''),
         address: updated.address ?? '',
-        phone: formatPhone(updated.phone ?? ''),
+        phone: maskPhone(updated.phone ?? ''),
       })
       setClinicFeedback({ kind: 'success', message: 'Dados da clínica atualizados.' })
     } catch (err: unknown) {
@@ -236,7 +221,7 @@ export function SettingsPage() {
               <input
                 type="text"
                 value={clinicForm.phone}
-                onChange={(e) => setClinicForm((p) => ({ ...p, phone: formatPhone(e.target.value) }))}
+                onChange={(e) => setClinicForm((p) => ({ ...p, phone: maskPhone(e.target.value) }))}
                 placeholder="(00) 00000-0000"
                 inputMode="numeric"
                 maxLength={15}
