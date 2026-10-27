@@ -8,7 +8,7 @@ interface AuthState {
   refreshToken: string | null
   isAuthenticated: boolean
 
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void
+  setAuth: (user: User, accessToken?: string, refreshToken?: string) => void
   logout: () => void
 }
 
