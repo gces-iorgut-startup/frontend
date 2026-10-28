@@ -140,10 +140,10 @@ describe('ClinicCodeInput — Validação em Tempo Real da Sigla da Clínica', (
     expect(resolvedMock).toHaveBeenCalledWith(null)
   })
 
-  it('deve exibir feedback específico quando a clínica não tiver responsável ativo (422)', async () => {
+  it('deve exibir feedback específico quando a clínica não tiver responsável ativo (400)', async () => {
     const inactiveError = {
       response: {
-        status: 422,
+        status: 400,
         data: { message: 'Clinic has no active owner' },
       },
     }
@@ -170,6 +170,36 @@ describe('ClinicCodeInput — Validação em Tempo Real da Sigla da Clínica', (
         'Clínica não possui um responsável ativo no momento.',
       )
       expect(screen.getByTestId('clinic-code-error-icon')).toBeInTheDocument()
+    })
+
+    expect(resolvedMock).toHaveBeenCalledWith(null)
+  })
+
+  it('deve exibir feedback de formato inválido quando a API rejeitar a sigla (422)', async () => {
+    const validationError = {
+      response: {
+        status: 422,
+        data: { message: 'Validation error' },
+      },
+    }
+    vi.mocked(clinicService.getClinicByCode).mockRejectedValue(validationError)
+
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime })
+    const resolvedMock = vi.fn()
+
+    render(<TestWrapper onClinicResolved={resolvedMock} />)
+
+    const input = screen.getByTestId('clinic-code-input')
+    await user.type(input, 'SIGLA-MUITO-LONGA-DEMAIS')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('clinic-code-error-msg')).toHaveTextContent(
+        'Formato de sigla inválido. Verifique a sigla com o responsável.',
+      )
     })
 
     expect(resolvedMock).toHaveBeenCalledWith(null)

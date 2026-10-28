@@ -68,8 +68,10 @@ export function ClinicCodeInput({
 
         if (statusCode === 404) {
           setFeedback('Clínica não encontrada. Verifique a sigla com o responsável.')
-        } else if (statusCode === 422) {
+        } else if (statusCode === 400) {
           setFeedback('Clínica não possui um responsável ativo no momento.')
+        } else if (statusCode === 422) {
+          setFeedback('Formato de sigla inválido. Verifique a sigla com o responsável.')
         } else {
           setFeedback(getErrorMessage(err, 'Erro ao validar o código da clínica.'))
         }
