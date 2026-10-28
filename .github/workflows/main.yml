@@ -33,6 +33,9 @@ jobs:
       - name: Verificar Tipagem (Typecheck)
         run: npx tsc -b
 
+      - name: Rodar testes unitários (Vitest)
+        run: npm test
+
       - name: Testar Build
         run: npm run build
 
