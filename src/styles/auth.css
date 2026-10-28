@@ -602,3 +602,41 @@
   color: #991b1b;
   border: 1px solid #fecaca;
 }
+
+/* Seletor de tipo de conta no cadastro (Dono de Clínica / Médico Veterinário) */
+.auth-account-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--gray-100);
+}
+
+.auth-account-tab {
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.auth-account-tab:hover {
+  color: var(--color-primary);
+}
+
+.auth-account-tab.active {
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.auth-account-tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
