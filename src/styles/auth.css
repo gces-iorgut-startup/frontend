@@ -602,3 +602,56 @@
   color: #991b1b;
   border: 1px solid #fecaca;
 }
+
+/* ═══════════════════════════════════════════════════
+   Registration Role Switcher (FE-06)
+   ═══════════════════════════════════════════════════ */
+
+.auth-role-tabs {
+  display: flex;
+  background-color: var(--gray-100, #f1f5f9);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.auth-role-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-role-tab:hover:not(.active) {
+  color: var(--color-text, #1e293b);
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-role-tab.active {
+  background-color: #ffffff;
+  color: var(--color-primary, #e11d48);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-role-desc {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #64748b);
+  text-align: center;
+  margin-top: -4px;
+  margin-bottom: var(--space-xs, 4px);
+  line-height: 1.4;
+}
+

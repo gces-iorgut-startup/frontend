@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   LoginRequest,
   RegisterRequest,
+  RegisterVetRequest,
   UpdateUserProfileRequest,
   User,
 } from '../types'
@@ -19,6 +20,11 @@ export const authService = {
 
   async register(data: RegisterRequest): Promise<{ user: AuthResponse['user'] }> {
     const response = await api.post('/auth/register', data)
+    return response.data
+  },
+
+  async registerVet(data: RegisterVetRequest): Promise<{ user: AuthResponse['user'] }> {
+    const response = await api.post('/auth/register/vet', data)
     return response.data
   },
 
