@@ -6,12 +6,22 @@ import { getErrorMessage, getValidationIssueMessage } from '../../lib/errorMessa
 import { useAuthStore } from '../../stores/authStore'
 import { PawSvg, FishSvg, BoneSvg } from '../../components/auth/PetDecorations'
 import { GoogleLoginButton, GoogleIcon } from '../../components/auth/GoogleLoginButton'
+import { ClinicCodeInput } from '../../components/auth/ClinicCodeInput'
 import { isGoogleOAuthConfigured } from '../../lib/googleOAuth'
+import type { Clinic } from '../../types'
 import '../../styles/auth.css'
 
+type AccountType = 'OWNER' | 'VET'
+
+const REGISTER_SUCCESS_MESSAGE = 'Conta criada com sucesso! Faça login para continuar.'
+
 export function RegisterPage() {
+  const [accountType, setAccountType] = useState<AccountType>('OWNER')
   const [name, setName] = useState('')
   const [clinicName, setClinicName] = useState('')
+  const [crmv, setCrmv] = useState('')
+  const [clinicCode, setClinicCode] = useState('')
+  const [resolvedClinic, setResolvedClinic] = useState<Clinic | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,14 +33,23 @@ export function RegisterPage() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
 
+  const isVet = accountType === 'VET'
+  // O cadastro de VET só é liberado após a sigla ser validada pelo ClinicCodeInput
+  const isVetClinicPending = isVet && !resolvedClinic
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (isVetClinicPending) return
     setError('')
     setLoading(true)
 
     try {
-      await authService.register({ name, email, password, clinicName })
-      navigate('/login')
+      if (isVet) {
+        await authService.registerVet({ name, email, password, crmv, clinicCode })
+      } else {
+        await authService.register({ name, email, password, clinicName })
+      }
+      navigate('/login', { state: { message: REGISTER_SUCCESS_MESSAGE } })
     } catch (err: unknown) {
       const validationIssue = getValidationIssueMessage(err)
       setError(validationIssue || getErrorMessage(err, 'Erro ao criar conta.'))
@@ -70,6 +89,25 @@ export function RegisterPage() {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-account-tabs" role="group" aria-label="Tipo de conta">
+            <button
+              type="button"
+              className={`auth-account-tab ${!isVet ? 'active' : ''}`}
+              aria-pressed={!isVet}
+              onClick={() => setAccountType('OWNER')}
+            >
+              Dono de Clínica
+            </button>
+            <button
+              type="button"
+              className={`auth-account-tab ${isVet ? 'active' : ''}`}
+              aria-pressed={isVet}
+              onClick={() => setAccountType('VET')}
+            >
+              Médico Veterinário
+            </button>
+          </div>
+
           <div className="form-group">
             <label className="form-label" htmlFor="register-name">
               Seu nome
@@ -87,21 +125,55 @@ export function RegisterPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="register-clinic">
-              Nome da clínica
-            </label>
-            <input
-              id="register-clinic"
-              className="form-input"
-              type="text"
-              placeholder="Ex: Clínica Veterinária PetLife"
-              value={clinicName}
-              onChange={(e) => setClinicName(e.target.value)}
-              required
-              minLength={2}
-            />
-          </div>
+          {isVet ? (
+            <>
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-crmv">
+                  CRMV
+                </label>
+                <input
+                  id="register-crmv"
+                  className="form-input"
+                  type="text"
+                  placeholder="Ex: CRMV-SP 12345"
+                  value={crmv}
+                  onChange={(e) => setCrmv(e.target.value)}
+                  required
+                  minLength={2}
+                  maxLength={40}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-clinic-code">
+                  Sigla da clínica
+                </label>
+                <ClinicCodeInput
+                  id="register-clinic-code"
+                  value={clinicCode}
+                  onChange={setClinicCode}
+                  onClinicResolved={setResolvedClinic}
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            <div className="form-group">
+              <label className="form-label" htmlFor="register-clinic">
+                Nome da clínica
+              </label>
+              <input
+                id="register-clinic"
+                className="form-input"
+                type="text"
+                placeholder="Ex: Clínica Veterinária PetLife"
+                value={clinicName}
+                onChange={(e) => setClinicName(e.target.value)}
+                required
+                minLength={2}
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label" htmlFor="register-email">
@@ -152,9 +224,15 @@ export function RegisterPage() {
           <button
             type="submit"
             className="btn btn-primary auth-submit"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || isVetClinicPending}
           >
-            {loading ? <span className="spinner" /> : 'Criar conta'}
+            {loading ? (
+              <span className="spinner" />
+            ) : isVet ? (
+              'Criar Conta de Veterinário'
+            ) : (
+              'Criar conta'
+            )}
           </button>
 
           <div className="auth-divider"><span>ou</span></div>
