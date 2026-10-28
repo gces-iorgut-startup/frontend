@@ -46,7 +46,7 @@ export function TutorLoginPage() {
         return
       }
 
-      setAuth(data.user, data.accessToken, data.refreshToken)
+      setAuth(data.user, data.csrfToken)
       navigate('/portal')
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao fazer login. Verifique suas credenciais.'))

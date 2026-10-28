@@ -41,8 +41,8 @@ export interface UpdateUserProfileRequest {
 
 export interface AuthResponse {
   user: User
-  accessToken: string
-  refreshToken: string
+  // Os tokens de sessão vão em cookies HttpOnly; o body traz só o token CSRF.
+  csrfToken: string
 }
 
 export interface LoginRequest {
