@@ -20,6 +20,7 @@ export interface User {
 export interface Clinic {
   id: string
   name: string
+  code?: string
   cnpj?: string | null
   address?: string | null
   phone?: string | null

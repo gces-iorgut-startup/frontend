@@ -88,4 +88,49 @@ describe('SettingsPage — Formulários de Clínica e Perfil (CNPJ, Telefone, CR
       expect(crmvInput.value).toBe('CRMV-SP 12345')
     })
   })
+
+  it('deve exibir a sigla da clínica e permitir copiar para a área de transferência quando for OWNER', async () => {
+    vi.mocked(clinicService.getMyClinic).mockResolvedValue({
+      id: 'clinic-1',
+      name: 'Clínica Vet',
+      code: 'PETLIFE-7A2',
+      cnpj: null,
+      address: null,
+      phone: null,
+    })
+
+    const user = userEvent.setup({ delay: null })
+    const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText')
+
+    render(<SettingsPage />)
+
+    expect(await screen.findByTestId('clinic-code-badge')).toHaveTextContent('PETLIFE-7A2')
+    const copyButton = screen.getByRole('button', { name: /copiar/i })
+    expect(copyButton).toBeInTheDocument()
+
+    await user.click(copyButton)
+    expect(writeTextSpy).toHaveBeenCalledWith('PETLIFE-7A2')
+    expect(await screen.findByText('Copiado!')).toBeInTheDocument()
+  })
+
+  it('não deve exibir o card da clínica nem a sigla quando usuário for VET', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: 'vet-1',
+        name: 'Dra. Ana',
+        email: 'ana@vet.com',
+        role: 'VET',
+        clinicId: 'clinic-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    })
+
+    render(<SettingsPage />)
+
+    await screen.findByText('Informações do Veterinário')
+    expect(screen.queryByText('Dados da Clínica')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('clinic-code-badge')).not.toBeInTheDocument()
+  })
 })
