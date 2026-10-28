@@ -129,6 +129,25 @@ describe('RegisterPage — Fluxo de Cadastro Duplo (Dono vs. Veterinário)', () 
     expect(screen.queryByLabelText(/CRMV/i)).not.toBeInTheDocument()
   })
 
+  it('deve preservar nome e e-mail já digitados ao alternar entre Dono e Veterinário', () => {
+    render(
+      <MemoryRouter>
+        <RegisterPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Seu nome/i), { target: { value: 'Dra. Camila' } })
+    fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: 'camila@petlife.com' } })
+
+    fireEvent.click(screen.getByTestId('tab-vet'))
+    expect(screen.getByLabelText(/Seu nome/i)).toHaveValue('Dra. Camila')
+    expect(screen.getByLabelText(/E-mail/i)).toHaveValue('camila@petlife.com')
+
+    fireEvent.click(screen.getByTestId('tab-owner'))
+    expect(screen.getByLabelText(/Seu nome/i)).toHaveValue('Dra. Camila')
+    expect(screen.getByLabelText(/E-mail/i)).toHaveValue('camila@petlife.com')
+  })
+
   it('deve cadastrar médico veterinário vinculado a uma clínica existente e redirecionar para /login', async () => {
     vi.mocked(clinicService.getClinicByCode).mockResolvedValueOnce({
       id: 'clinic-xyz',

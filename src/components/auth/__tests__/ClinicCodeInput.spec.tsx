@@ -69,6 +69,30 @@ describe('ClinicCodeInput — Validação em Tempo Real da Sigla da Clínica', (
     expect(resolvedMock).toHaveBeenCalledWith(null)
   })
 
+  it('não deve chamar a API antes do debounce e deve chamá-la uma única vez com o valor final', async () => {
+    vi.mocked(clinicService.getClinicByCode).mockResolvedValue({
+      id: 'clinic-1',
+      name: 'PetLife Asa Sul',
+      code: 'PETLIFE-7X2',
+    })
+
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime })
+    render(<TestWrapper />)
+
+    await user.type(screen.getByTestId('clinic-code-input'), 'petlife-7x2')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200)
+    })
+    expect(clinicService.getClinicByCode).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(clinicService.getClinicByCode).toHaveBeenCalledTimes(1)
+    expect(clinicService.getClinicByCode).toHaveBeenCalledWith('PETLIFE-7X2')
+  })
+
   it('deve validar com sucesso após debounce de 400ms e exibir o nome da clínica', async () => {
     const mockClinic: Clinic = {
       id: 'clinic-123',
