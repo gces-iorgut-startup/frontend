@@ -62,6 +62,14 @@ export interface RegisterRequest {
   crmv?: string
 }
 
+export interface RegisterVetRequest {
+  name: string
+  email: string
+  password: string
+  crmv: string
+  clinicCode: string
+}
+
 // ── Tutor ─────────────────────────────────────────
 export interface Tutor {
   id: string
