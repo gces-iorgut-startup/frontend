@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Building2, Eye, EyeOff, Stethoscope } from 'lucide-react'
 import { authService } from '../../lib/authService'
 import { getErrorMessage, getValidationIssueMessage } from '../../lib/errorMessage'
+import { normalizeCrmv } from '../../lib/documents'
 import { useAuthStore } from '../../stores/authStore'
 import { PawSvg, FishSvg, BoneSvg } from '../../components/auth/PetDecorations'
 import { GoogleLoginButton, GoogleIcon } from '../../components/auth/GoogleLoginButton'
@@ -11,50 +12,88 @@ import { isGoogleOAuthConfigured } from '../../lib/googleOAuth'
 import type { Clinic } from '../../types'
 import '../../styles/auth.css'
 
-type AccountType = 'OWNER' | 'VET'
-
-const REGISTER_SUCCESS_MESSAGE = 'Conta criada com sucesso! Faça login para continuar.'
+export type RegisterRole = 'OWNER' | 'VET'
 
 export function RegisterPage() {
-  const [accountType, setAccountType] = useState<AccountType>('OWNER')
+  const [role, setRole] = useState<RegisterRole>('OWNER')
   const [name, setName] = useState('')
-  const [clinicName, setClinicName] = useState('')
-  const [crmv, setCrmv] = useState('')
-  const [clinicCode, setClinicCode] = useState('')
-  const [resolvedClinic, setResolvedClinic] = useState<Clinic | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Campos específicos do Dono
+  const [clinicName, setClinicName] = useState('')
+
+  // Campos específicos do Veterinário
+  const [crmv, setCrmv] = useState('')
+  const [clinicCode, setClinicCode] = useState('')
+  const [resolvedClinic, setResolvedClinic] = useState<Clinic | null>(null)
+
   const [googleLoading, setGoogleLoading] = useState(false)
 
   const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
 
-  const isVet = accountType === 'VET'
-  // O cadastro de VET só é liberado após a sigla ser validada pelo ClinicCodeInput
-  const isVetClinicPending = isVet && !resolvedClinic
+  const handleRoleChange = (newRole: RegisterRole) => {
+    setRole(newRole)
+    setError('')
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (isVetClinicPending) return
     setError('')
-    setLoading(true)
 
-    try {
-      if (isVet) {
-        await authService.registerVet({ name, email, password, crmv, clinicCode })
-      } else {
-        await authService.register({ name, email, password, clinicName })
+    if (role === 'OWNER') {
+      if (!clinicName.trim()) {
+        setError('Nome da clínica é obrigatório.')
+        return
       }
-      navigate('/login', { state: { message: REGISTER_SUCCESS_MESSAGE } })
-    } catch (err: unknown) {
-      const validationIssue = getValidationIssueMessage(err)
-      setError(validationIssue || getErrorMessage(err, 'Erro ao criar conta.'))
-    } finally {
-      setLoading(false)
+
+      setLoading(true)
+      try {
+        await authService.register({ name: name.trim(), email: email.trim(), password, clinicName: clinicName.trim() })
+        navigate('/login', {
+          state: { message: 'Conta criada com sucesso! Faça login para continuar.' },
+        })
+      } catch (err: unknown) {
+        const validationIssue = getValidationIssueMessage(err)
+        setError(validationIssue || getErrorMessage(err, 'Erro ao criar conta.'))
+      } finally {
+        setLoading(false)
+      }
+    } else {
+      // Validações do Veterinário
+      const normalizedCrmv = normalizeCrmv(crmv)
+      if (!normalizedCrmv) {
+        setError('CRMV inválido. Utilize o formato CRMV-UF 12345 (ex: CRMV-SP 12345).')
+        return
+      }
+
+      if (!clinicCode.trim() || !resolvedClinic) {
+        setError('Informe uma sigla válida de clínica cadastrada.')
+        return
+      }
+
+      setLoading(true)
+      try {
+        await authService.registerVet({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          crmv: normalizedCrmv,
+          clinicCode: clinicCode.trim().toUpperCase(),
+        })
+        navigate('/login', {
+          state: { message: 'Cadastro de veterinário realizado com sucesso! Faça login para continuar.' },
+        })
+      } catch (err: unknown) {
+        const validationIssue = getValidationIssueMessage(err)
+        setError(validationIssue || getErrorMessage(err, 'Erro ao criar conta de veterinário.'))
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -64,8 +103,6 @@ export function RegisterPage() {
     try {
       const data = await authService.googleLogin(accessToken)
       setAuth(data.user, data.accessToken, data.refreshToken)
-      navigate('/login') // Força o VET a logar se precisar, ou vai direto. No Google é OWNER por padrão se novo.
-      // Wait, let's navigate to home since setAuth is called.
       navigate(data.user.role === 'TUTOR' ? '/portal' : '/home')
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao autenticar com o Google.'))
@@ -88,26 +125,39 @@ export function RegisterPage() {
           </span>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="auth-account-tabs" role="group" aria-label="Tipo de conta">
-            <button
-              type="button"
-              className={`auth-account-tab ${!isVet ? 'active' : ''}`}
-              aria-pressed={!isVet}
-              onClick={() => setAccountType('OWNER')}
-            >
-              Dono de Clínica
-            </button>
-            <button
-              type="button"
-              className={`auth-account-tab ${isVet ? 'active' : ''}`}
-              aria-pressed={isVet}
-              onClick={() => setAccountType('VET')}
-            >
-              Médico Veterinário
-            </button>
-          </div>
+        {/* Alternador de Perfil: Dono vs Veterinário */}
+        <div className="auth-role-tabs" role="tablist" aria-label="Tipo de conta">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={role === 'OWNER'}
+            className={`auth-role-tab ${role === 'OWNER' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('OWNER')}
+            data-testid="tab-owner"
+          >
+            <Building2 size={18} />
+            <span>Dono de Clínica</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={role === 'VET'}
+            className={`auth-role-tab ${role === 'VET' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('VET')}
+            data-testid="tab-vet"
+          >
+            <Stethoscope size={18} />
+            <span>Médico Veterinário</span>
+          </button>
+        </div>
 
+        <p className="auth-role-desc">
+          {role === 'OWNER'
+            ? 'Crie uma conta para sua clínica e gerencie sua equipe.'
+            : 'Vincule-se à clínica da sua equipe utilizando a sigla fornecida pelo responsável.'}
+        </p>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="register-name">
               Seu nome
@@ -125,39 +175,8 @@ export function RegisterPage() {
             />
           </div>
 
-          {isVet ? (
-            <>
-              <div className="form-group">
-                <label className="form-label" htmlFor="register-crmv">
-                  CRMV
-                </label>
-                <input
-                  id="register-crmv"
-                  className="form-input"
-                  type="text"
-                  placeholder="Ex: CRMV-SP 12345"
-                  value={crmv}
-                  onChange={(e) => setCrmv(e.target.value)}
-                  required
-                  minLength={2}
-                  maxLength={40}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="register-clinic-code">
-                  Sigla da clínica
-                </label>
-                <ClinicCodeInput
-                  id="register-clinic-code"
-                  value={clinicCode}
-                  onChange={setClinicCode}
-                  onClinicResolved={setResolvedClinic}
-                  required
-                />
-              </div>
-            </>
-          ) : (
+          {/* Campo exclusivo para Dono de Clínica */}
+          {role === 'OWNER' && (
             <div className="form-group">
               <label className="form-label" htmlFor="register-clinic">
                 Nome da clínica
@@ -173,6 +192,45 @@ export function RegisterPage() {
                 minLength={2}
               />
             </div>
+          )}
+
+          {/* Campos exclusivos para Médico Veterinário */}
+          {role === 'VET' && (
+            <>
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-crmv">
+                  CRMV
+                </label>
+                <input
+                  id="register-crmv"
+                  className="form-input"
+                  type="text"
+                  placeholder="Ex: CRMV-SP 12345"
+                  value={crmv}
+                  onChange={(e) => setCrmv(e.target.value.toUpperCase())}
+                  onBlur={() => {
+                    const normalized = normalizeCrmv(crmv)
+                    if (normalized) setCrmv(normalized)
+                  }}
+                  required
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-clinic-code">
+                  Sigla da Clínica
+                </label>
+                <ClinicCodeInput
+                  id="register-clinic-code"
+                  value={clinicCode}
+                  onChange={setClinicCode}
+                  onClinicResolved={setResolvedClinic}
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </>
           )}
 
           <div className="form-group">
@@ -224,38 +282,42 @@ export function RegisterPage() {
           <button
             type="submit"
             className="btn btn-primary auth-submit"
-            disabled={loading || googleLoading || isVetClinicPending}
+            disabled={loading || googleLoading || (role === 'VET' && !resolvedClinic)}
           >
             {loading ? (
               <span className="spinner" />
-            ) : isVet ? (
-              'Criar Conta de Veterinário'
+            ) : role === 'VET' ? (
+              'Cadastrar como Veterinário'
             ) : (
               'Criar conta'
             )}
           </button>
 
-          <div className="auth-divider"><span>ou</span></div>
-          {isGoogleOAuthConfigured ? (
-            <GoogleLoginButton
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Login com Google cancelado ou falhou.')}
-              disabled={loading || googleLoading}
-            />
-          ) : (
-            <button
-              type="button"
-              className="btn auth-google-btn"
-              disabled={loading || googleLoading}
-              onClick={() =>
-                setError(
-                  'Configure VITE_GOOGLE_CLIENT_ID em frontend/.env e reinicie o npm run dev.',
-                )
-              }
-            >
-              <GoogleIcon />
-              Entrar com Google
-            </button>
+          {role === 'OWNER' && (
+            <>
+              <div className="auth-divider"><span>ou</span></div>
+              {isGoogleOAuthConfigured ? (
+                <GoogleLoginButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError('Login com Google cancelado ou falhou.')}
+                  disabled={loading || googleLoading}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="btn auth-google-btn"
+                  disabled={loading || googleLoading}
+                  onClick={() =>
+                    setError(
+                      'Configure VITE_GOOGLE_CLIENT_ID em frontend/.env e reinicie o npm run dev.',
+                    )
+                  }
+                >
+                  <GoogleIcon />
+                  Entrar com Google
+                </button>
+              )}
+            </>
           )}
 
           <div className="auth-switch text-center">

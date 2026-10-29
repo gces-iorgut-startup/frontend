@@ -7,6 +7,7 @@ import {
   maskCpf,
   maskDate,
   maskPhone,
+  normalizeCrmv,
   onlyDigits,
 } from '../documents'
 
@@ -75,6 +76,26 @@ describe('documents utils (Máscaras e Validações)', () => {
       expect(isValidCnpj('11.222.333/0001-81')).toBe(true)
       expect(isValidCnpj('11111111111111')).toBe(false)
       expect(isValidCnpj('123')).toBe(false)
+    })
+  })
+
+  describe('normalizeCrmv', () => {
+    it('deve retornar string vazia para entrada vazia', () => {
+      expect(normalizeCrmv('')).toBe('')
+      expect(normalizeCrmv('   ')).toBe('')
+    })
+
+    it('deve normalizar CRMV em formatos válidos', () => {
+      expect(normalizeCrmv('SP12345')).toBe('CRMV-SP 12345')
+      expect(normalizeCrmv('crmv-rj 9876')).toBe('CRMV-RJ 9876')
+      expect(normalizeCrmv('mg-123456')).toBe('CRMV-MG 123456')
+      expect(normalizeCrmv('CRMV-DF 4567')).toBe('CRMV-DF 4567')
+    })
+
+    it('deve retornar null para formatos inválidos', () => {
+      expect(normalizeCrmv('12345')).toBe(null)
+      expect(normalizeCrmv('CRMV 123')).toBe(null)
+      expect(normalizeCrmv('XYZ-12345')).toBe(null)
     })
   })
 })

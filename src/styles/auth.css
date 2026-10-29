@@ -603,40 +603,55 @@
   border: 1px solid #fecaca;
 }
 
-/* Seletor de tipo de conta no cadastro (Dono de Clínica / Médico Veterinário) */
-.auth-account-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+/* ═══════════════════════════════════════════════════
+   Registration Role Switcher (FE-06)
+   ═══════════════════════════════════════════════════ */
+
+.auth-role-tabs {
+  display: flex;
+  background-color: var(--gray-100, #f1f5f9);
   padding: 4px;
   border-radius: 12px;
-  background: var(--gray-100);
+  gap: 4px;
+  width: 100%;
+  margin-bottom: var(--space-xs, 4px);
 }
 
-.auth-account-tab {
+.auth-role-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
   border: none;
   background: transparent;
+  color: var(--color-text-secondary, #64748b);
   border-radius: 9px;
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--gray-500);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
-.auth-account-tab:hover {
-  color: var(--color-primary);
+.auth-role-tab:hover:not(.active) {
+  color: var(--color-text, #1e293b);
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
-.auth-account-tab.active {
-  background: #fff;
-  color: var(--color-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+.auth-role-tab.active {
+  background-color: #ffffff;
+  color: var(--color-primary, #e11d48);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.auth-account-tab:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+.auth-role-desc {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #64748b);
+  text-align: center;
+  margin-top: -4px;
+  margin-bottom: var(--space-xs, 4px);
+  line-height: 1.4;
 }
+

@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../lib/authService'
 import { clinicService } from '../../lib/clinicService'
 import { getErrorMessage } from '../../lib/errorMessage'
-import { isValidCnpj, maskCnpj, maskPhone, onlyDigits } from '../../lib/documents'
+import { isValidCnpj, maskCnpj, maskPhone, normalizeCrmv, onlyDigits } from '../../lib/documents'
 import type { User } from '../../types'
 import '../../styles/settings.css'
 
@@ -16,17 +16,6 @@ function patchCurrentUser(partial: Partial<User>) {
 }
 
 type FeedbackState = { kind: 'success' | 'error'; message: string } | null
-
-function normalizeCrmv(value: string) {
-  const trimmed = value.trim().toUpperCase()
-  if (!trimmed) return ''
-
-  const match = trimmed.match(/^(?:CRMV[-\s]?)?([A-Z]{2})[-\s]?(\d{4,6})$/)
-  if (!match) return null
-
-  const [, uf, number] = match
-  return `CRMV-${uf} ${number}`
-}
 
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)

@@ -66,3 +66,15 @@ export function isValidCnpj(value: string): boolean {
   if (d.length !== 14) return false
   return libValidCnpj(d)
 }
+
+/** Valida e normaliza formato de CRMV (ex: CRMV-SP 12345). Retorna null se inválido. */
+export function normalizeCrmv(value: string): string | null {
+  const trimmed = value.trim().toUpperCase()
+  if (!trimmed) return ''
+
+  const match = trimmed.match(/^(?:CRMV[-\s]?)?([A-Z]{2})[-\s]?(\d{4,6})$/)
+  if (!match) return null
+
+  const [, uf, number] = match
+  return `CRMV-${uf} ${number}`
+}
