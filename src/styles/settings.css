@@ -160,6 +160,95 @@
   cursor: not-allowed;
 }
 
+.clinic-code-box {
+  background: #fdf2f8;
+  border: 1px dashed var(--color-primary, #ec4899);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.clinic-code-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clinic-code-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-primary-dark, #be185d);
+}
+
+.clinic-code-desc {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.clinic-code-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.clinic-code-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: #fff;
+  color: var(--color-primary-dark, #be185d);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #f2d6e2);
+  user-select: all;
+}
+
+.clinic-code-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--color-border, #f2d6e2);
+  color: var(--color-text-strong, #1f2937);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clinic-code-copy-btn:hover {
+  background: #fdf2f8;
+  border-color: var(--color-primary, #ec4899);
+  color: var(--color-primary-dark, #be185d);
+}
+
+.clinic-code-copy-btn.copied {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+@media (max-width: 680px) {
+  .clinic-code-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .clinic-code-display {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 680px) {
   .settings-page {
     padding: 20px 16px;
