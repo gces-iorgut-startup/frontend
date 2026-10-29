@@ -26,7 +26,7 @@ export function ClinicCodeInput({
   required = false,
   id = 'register-clinic-code',
   name = 'clinicCode',
-  placeholder = 'Ex: PETLIFE-7A2',
+  placeholder = 'Ex: PETLIFE-7A2K9',
   className = '',
 }: ClinicCodeInputProps) {
   const [status, setStatus] = useState<ClinicCodeValidationStatus>('idle')
@@ -49,6 +49,8 @@ export function ClinicCodeInput({
 
     setStatus('validating')
     setFeedback(null)
+    // Invalida a clínica anterior: o código mudou e ainda não foi revalidado
+    onClinicResolvedRef.current?.(null)
 
     let cancelled = false
     const timer = setTimeout(async () => {

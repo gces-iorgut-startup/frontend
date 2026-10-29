@@ -105,6 +105,37 @@ describe('ClinicCodeInput — Validação em Tempo Real da Sigla da Clínica', (
     expect(resolvedMock).toHaveBeenCalledWith(mockClinic)
   })
 
+  it('deve invalidar a clínica resolvida assim que o código for editado, antes da nova validação', async () => {
+    const mockClinic: Clinic = {
+      id: 'clinic-123',
+      name: 'Clínica Veterinária PetLife',
+      code: 'PETLIFE-7A2',
+    }
+    vi.mocked(clinicService.getClinicByCode).mockResolvedValue(mockClinic)
+
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime })
+    const resolvedMock = vi.fn()
+
+    render(<TestWrapper onClinicResolved={resolvedMock} />)
+
+    const input = screen.getByTestId('clinic-code-input')
+    await user.type(input, 'PETLIFE-7A2')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+
+    await waitFor(() => {
+      expect(resolvedMock).toHaveBeenLastCalledWith(mockClinic)
+    })
+
+    // Edita o código: ainda dentro do debounce, a clínica anterior não pode continuar válida
+    await user.type(input, 'X')
+
+    expect(resolvedMock).toHaveBeenLastCalledWith(null)
+    expect(screen.getByTestId('clinic-code-spinner')).toBeInTheDocument()
+  })
+
   it('deve exibir feedback de erro amigável quando a clínica não for encontrada (404)', async () => {
     const notFoundError = {
       response: {
