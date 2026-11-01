@@ -20,6 +20,7 @@ export interface User {
 export interface Clinic {
   id: string
   name: string
+  code?: string
   cnpj?: string | null
   address?: string | null
   phone?: string | null
@@ -59,6 +60,14 @@ export interface RegisterRequest {
   clinicAddress?: string
   clinicPhone?: string
   crmv?: string
+}
+
+export interface RegisterVetRequest {
+  name: string
+  email: string
+  password: string
+  crmv: string
+  clinicCode: string
 }
 
 // ── Tutor ─────────────────────────────────────────

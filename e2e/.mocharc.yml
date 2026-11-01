@@ -1,4 +1,5 @@
 spec:
+  - e2e/tests/tutor-first-access.test.ts
   - e2e/tests/vet.test.ts
   - e2e/tests/tutor.test.ts
 timeout: 120000

@@ -107,7 +107,7 @@ export async function registerOwner(
 export async function registerVet(
   ctx: TestContext,
   ownerUser: TestUser,
-  data: { name: string; email: string; password?: string } = {
+  data: { name: string; email: string; password?: string; crmv?: string } = {
     name: TEST_DATA.VET_NAME,
     email: TEST_DATA.VET_EMAIL,
   }
@@ -115,15 +115,18 @@ export async function registerVet(
   const client = createApiClient();
   const password = data.password || TEST_PASSWORD;
 
-  await client.post(
-    '/auth/register/vet',
-    {
-      name: data.name,
-      email: data.email,
-      password,
-    },
-    { headers: authHeaders(ownerUser.accessToken) }
-  );
+  // O autocadastro do VET é público e vincula pela sigla da clínica do OWNER
+  const clinicRes = await client.get('/clinics/me', {
+    headers: authHeaders(ownerUser.accessToken),
+  });
+
+  await client.post('/auth/register/vet', {
+    name: data.name,
+    email: data.email,
+    password,
+    crmv: data.crmv || TEST_DATA.VET_CRMV,
+    clinicCode: clinicRes.data.clinic.code,
+  });
 
   const loginRes = await client.post('/auth/login', {
     email: data.email,
@@ -138,6 +141,7 @@ export async function registerVet(
     role: loginRes.data.user.role,
     accessToken: loginRes.data.accessToken,
     refreshToken: loginRes.data.refreshToken,
+    clinicId: loginRes.data.user.clinicId,
   };
 
   ctx.users.push(user);
@@ -356,4 +360,29 @@ export async function cleanupTestClinic(owner: TestUser): Promise<void> {
     `/test/clinics/${owner.clinicId}`,
     { headers: { ...authHeaders(owner.accessToken), ...testRouteHeaders() } }
   );
+}
+/** Cria a conta do tutor SEM definir a senha (o tutor ainda precisa do primeiro acesso). */
+export async function createPendingTutorAccount(
+  user: TestUser,
+  tutorId: string,
+  email: string
+): Promise<{ userId: string; email: string }> {
+  const client = createApiClient();
+  const res = await client.post(
+    `/tutors/${tutorId}/account`,
+    { email },
+    { headers: authHeaders(user.accessToken) }
+  );
+  return res.data;
+}
+
+/** Gera o token de primeiro acesso (rota de teste, substitui o e-mail de convite). */
+export async function getFirstAccessToken(email: string): Promise<string> {
+  const client = createApiClient();
+  const res = await client.post(
+    '/test/first-access-token',
+    { email },
+    { headers: testRouteHeaders() }
+  );
+  return res.data.token;
 }

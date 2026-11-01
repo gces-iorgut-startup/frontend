@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Save, PawPrint, User, ImagePlus, CircleHelp } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errorMessage'
-import { isValidCpf, maskCpf, onlyDigits } from '../../lib/documents'
+import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
 import { CepNotFoundError, CepRequestError, fetchAddressByCep } from '../../lib/cep'
 import type { Patient } from '../../types'
 import '../../styles/patients.css'
@@ -81,30 +81,6 @@ const initialForm: EditFormData = {
   street: '',
   addressNumber: '',
   complement: '',
-}
-
-function maskPhone(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
-  if (digits.length <= 10) {
-    return digits
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{4})(\d)/, '$1-$2')
-  }
-  return digits
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2')
-}
-
-function maskCep(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8)
-  return digits.replace(/(\d{5})(\d)/, '$1-$2')
-}
-
-function maskDate(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8)
-  return digits
-    .replace(/(\d{2})(\d)/, '$1/$2')
-    .replace(/(\d{2})(\d)/, '$1/$2')
 }
 
 function toDateInputBR(value?: string | null) {
