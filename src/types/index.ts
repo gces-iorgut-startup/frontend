@@ -264,6 +264,8 @@ export interface Vaccination {
   vaccineName: string
   appliedAt?: string | null
   nextDoseAt?: string | null
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name'>
@@ -274,6 +276,8 @@ export interface CreateVaccinationRequest {
   vaccineName: string
   appliedAt?: string
   nextDoseAt?: string
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
 }
 
