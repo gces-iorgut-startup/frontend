@@ -19,6 +19,7 @@ import { getErrorMessage } from '../../lib/errorMessage'
 import { examService } from '../../lib/examService'
 import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
+import { ChronicConditionsSection } from '../../components/ChronicConditionsSection'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
 import type {
@@ -30,7 +31,7 @@ import type {
 } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'patologias'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -359,6 +360,13 @@ export function PatientDetailsPage() {
         >
           Exames
         </button>
+        <button
+          className={`patient-details-tab${activeTab === 'patologias' ? ' active' : ''}`}
+          onClick={() => setActiveTab('patologias')}
+          type="button"
+        >
+          Patologias
+        </button>
       </div>
 
       {activeTab === 'dados' && (
@@ -615,6 +623,10 @@ export function PatientDetailsPage() {
             </table>
           </div>
         </section>
+      )}
+
+      {activeTab === 'patologias' && patient && (
+        <ChronicConditionsSection patientId={patient.id} canEdit={user?.role !== 'TUTOR'} />
       )}
 
       {showStartCareModal && (
