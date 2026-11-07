@@ -192,4 +192,57 @@ describe('VaccinationSection — Seção de Vacinação no Prontuário (CLI-06)'
       expect(screen.getByText('15 dias')).toBeInTheDocument()
     })
   })
+
+  it('deve registrar vacina com status PENDING informando data prevista (nextDoseAt)', async () => {
+    vi.mocked(VaccinationsService.listByPatient).mockResolvedValue([])
+    const user = userEvent.setup()
+
+    const pendingVaccination: Vaccination = {
+      id: 'pending-vac-1',
+      patientId: mockPatientId,
+      vaccineName: 'Raiva Agendada',
+      doseNumber: 2,
+      appliedAt: null,
+      nextDoseAt: '2026-12-01T12:00:00.000Z',
+      status: 'PENDING',
+      createdAt: '2026-11-07T12:00:00.000Z',
+    }
+
+    vi.mocked(VaccinationsService.create).mockResolvedValue(pendingVaccination)
+
+    render(<VaccinationSection patientId={mockPatientId} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('vaccinations-empty')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /Registrar Vacina/i }))
+
+    await user.type(screen.getByLabelText(/Nome da Vacina \*/i), 'Raiva Agendada')
+
+    // Troca status para PENDING
+    await user.selectOptions(screen.getByLabelText(/Status da Vacina/i), 'PENDING')
+
+    // Deve exibir o campo de Data Prevista
+    const nextDoseInput = screen.getByLabelText(/Data Prevista \/ Próxima Dose \*/i)
+    await user.type(nextDoseInput, '2026-12-01')
+
+    await user.click(screen.getByRole('button', { name: /Salvar Vacina/i }))
+
+    await waitFor(() => {
+      expect(VaccinationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId: mockPatientId,
+          vaccineName: 'Raiva Agendada',
+          status: 'PENDING',
+          nextDoseAt: expect.stringContaining('2026-12-01'),
+        })
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Raiva Agendada')).toBeInTheDocument()
+      expect(screen.getByTestId('badge-pending')).toBeInTheDocument()
+    })
+  })
 })

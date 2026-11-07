@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { AlertCircle, Calendar, CheckCircle2, Clock, Plus, RefreshCw, Syringe } from 'lucide-react'
 import { VaccinationsService } from '../services/vaccinations.service'
 import { RegisterVaccinationModal } from './RegisterVaccinationModal'
@@ -16,7 +16,7 @@ export function VaccinationSection({ patientId, canRegister = true }: Vaccinatio
   const [error, setError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  async function loadVaccinations() {
+  const loadVaccinations = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -27,13 +27,13 @@ export function VaccinationSection({ patientId, canRegister = true }: Vaccinatio
     } finally {
       setLoading(false)
     }
-  }
+  }, [patientId])
 
   useEffect(() => {
     if (patientId) {
       loadVaccinations()
     }
-  }, [patientId])
+  }, [loadVaccinations, patientId])
 
   function handleVaccinationCreated(newVaccination: Vaccination) {
     setVaccinations((prev) => [newVaccination, ...prev])

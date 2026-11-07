@@ -10,15 +10,22 @@ interface RegisterVaccinationModalProps {
   onSuccess: (vaccination: Vaccination) => void
 }
 
+function getTodayLocalDate(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function RegisterVaccinationModal({
   patientId,
   onClose,
   onSuccess,
 }: RegisterVaccinationModalProps) {
-  const todayStr = new Date().toISOString().slice(0, 10)
-
   const [vaccineName, setVaccineName] = useState('')
-  const [appliedAt, setAppliedAt] = useState(todayStr)
+  const [appliedAt, setAppliedAt] = useState(getTodayLocalDate())
+  const [nextDoseAt, setNextDoseAt] = useState('')
   const [doseNumber, setDoseNumber] = useState<string>('1')
   const [intervalDays, setIntervalDays] = useState<string>('')
   const [status, setStatus] = useState<VaccinationStatus>('UP_TO_DATE')
@@ -36,7 +43,17 @@ export function RegisterVaccinationModal({
     }
 
     if (status === 'UP_TO_DATE' && !appliedAt) {
-      setError('Data de aplicação é obrigatória para vacina aplicada.')
+      setError('Data de aplicação é obrigatória para vacinas aplicadas.')
+      return
+    }
+
+    if (status === 'PENDING' && !nextDoseAt) {
+      setError('Data da próxima dose é obrigatória para vacinas agendadas.')
+      return
+    }
+
+    if (status === 'OVERDUE' && !appliedAt && !nextDoseAt) {
+      setError('Informe a data de aplicação ou a data de vencimento da dose.')
       return
     }
 
@@ -50,7 +67,8 @@ export function RegisterVaccinationModal({
         patientId,
         vaccineName: trimmedName,
         status,
-        appliedAt: appliedAt ? new Date(`${appliedAt}T12:00:00Z`).toISOString() : undefined,
+        appliedAt: appliedAt && status !== 'PENDING' ? new Date(`${appliedAt}T12:00:00Z`).toISOString() : undefined,
+        nextDoseAt: nextDoseAt ? new Date(`${nextDoseAt}T12:00:00Z`).toISOString() : undefined,
         doseNumber: parsedDose && !isNaN(parsedDose) && parsedDose > 0 ? parsedDose : undefined,
         intervalDays: parsedInterval && !isNaN(parsedInterval) && parsedInterval > 0 ? parsedInterval : undefined,
       })
@@ -126,15 +144,13 @@ export function RegisterVaccinationModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label htmlFor="vaccine-applied-at" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
-                Data de Aplicação *
+              <label htmlFor="vaccine-status" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                Status da Vacina
               </label>
-              <input
-                id="vaccine-applied-at"
-                type="date"
-                required
-                value={appliedAt}
-                onChange={(e) => setAppliedAt(e.target.value)}
+              <select
+                id="vaccine-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as VaccinationStatus)}
                 disabled={isSubmitting}
                 style={{
                   width: '100%',
@@ -143,8 +159,13 @@ export function RegisterVaccinationModal({
                   border: '1px solid #cbd5e1',
                   fontSize: '0.875rem',
                   boxSizing: 'border-box',
+                  backgroundColor: '#fff',
                 }}
-              />
+              >
+                <option value="UP_TO_DATE">Aplicada (Em dia)</option>
+                <option value="PENDING">Pendente (Agendada)</option>
+                <option value="OVERDUE">Atrasada</option>
+              </select>
             </div>
 
             <div>
@@ -171,18 +192,17 @@ export function RegisterVaccinationModal({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {status === 'PENDING' ? (
             <div>
-              <label htmlFor="vaccine-interval-days" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
-                Intervalo (dias)
+              <label htmlFor="vaccine-next-dose-at" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                Data Prevista / Próxima Dose *
               </label>
               <input
-                id="vaccine-interval-days"
-                type="number"
-                min={1}
-                value={intervalDays}
-                onChange={(e) => setIntervalDays(e.target.value)}
-                placeholder="Ex: 21 (vazio se única)"
+                id="vaccine-next-dose-at"
+                type="date"
+                required
+                value={nextDoseAt}
+                onChange={(e) => setNextDoseAt(e.target.value)}
                 disabled={isSubmitting}
                 style={{
                   width: '100%',
@@ -194,35 +214,59 @@ export function RegisterVaccinationModal({
                 }}
               />
             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label htmlFor="vaccine-applied-at" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                  Data de Aplicação *
+                </label>
+                <input
+                  id="vaccine-applied-at"
+                  type="date"
+                  required
+                  value={appliedAt}
+                  onChange={(e) => setAppliedAt(e.target.value)}
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
 
-            <div>
-              <label htmlFor="vaccine-status" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
-                Status da Vacina
-              </label>
-              <select
-                id="vaccine-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as VaccinationStatus)}
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.875rem',
-                  boxSizing: 'border-box',
-                  backgroundColor: '#fff',
-                }}
-              >
-                <option value="UP_TO_DATE">Aplicada (Em dia)</option>
-                <option value="PENDING">Pendente (Agendada)</option>
-                <option value="OVERDUE">Atrasada</option>
-              </select>
+              <div>
+                <label htmlFor="vaccine-interval-days" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                  Intervalo (dias)
+                </label>
+                <input
+                  id="vaccine-interval-days"
+                  type="number"
+                  min={1}
+                  value={intervalDays}
+                  onChange={(e) => setIntervalDays(e.target.value)}
+                  placeholder="Ex: 21 (vazio se única)"
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 8px 0' }}>
-            💡 Dica: Ao informar o intervalo em dias, a próxima dose é calculada e persistida automaticamente no cronograma.
+            {status === 'PENDING'
+              ? '💡 Para vacinas agendadas, a data prevista da próxima dose é obrigatória.'
+              : '💡 Ao informar o intervalo em dias, a próxima dose é calculada e persistida automaticamente no cronograma.'}
           </p>
 
           <div className="patient-edit-modal-actions" style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
