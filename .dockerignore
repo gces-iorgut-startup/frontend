@@ -1,7 +1,15 @@
 node_modules
 dist
+coverage
+e2e
+e2e-smoke
+e2e-artifacts
+playwright-smoke-report
+test-results
 .git
 .gitignore
+.github
 *.md
 .env
 .env.*
+!.env.example
