@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Save, PawPrint, User, Plus } from 'lucide-react'
 import { api } from '../../lib/api'
-import { getErrorMessage } from '../../lib/errorMessage'
+import { getErrorMessage, getValidationIssues } from '../../lib/errorMessage'
 import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
 import { CepNotFoundError, CepRequestError, fetchAddressByCep } from '../../lib/cep'
 import { TutorsService } from '../../services/tutors.service'
@@ -268,6 +268,9 @@ export function PatientRegisterPage() {
           : err instanceof CepRequestError
             ? 'Não foi possível buscar o CEP. Preencha manualmente.'
             : 'Erro ao buscar CEP.'
+      if (err instanceof CepNotFoundError) {
+        setForm((prev) => ({ ...prev, state: '', city: '', neighborhood: '', street: '' }))
+      }
       setErrors((prev) => ({ ...prev, cep: message }))
     } finally {
       if (cepAbortRef.current === controller) {
@@ -484,6 +487,20 @@ export function PatientRegisterPage() {
       if (!form.tutorFullName.trim()) newErrors.tutorFullName = 'Nome do tutor é obrigatório'
       if (!form.tutorCpf || !isValidCpf(form.tutorCpf)) newErrors.tutorCpf = 'CPF inválido'
       if (!form.tutorPhone || form.tutorPhone.replace(/\D/g, '').length < 10) newErrors.tutorPhone = 'Telefone inválido'
+
+      const email = form.tutorEmail.trim()
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.tutorEmail = 'E-mail inválido'
+      }
+
+      const cepDigits = form.cep.replace(/\D/g, '')
+      if (cepDigits && cepDigits.length !== 8) {
+        newErrors.cep = 'CEP incompleto'
+      } else if (isFetchingCep) {
+        newErrors.cep = 'Aguarde a busca do CEP'
+      } else if (errors.cep === 'CEP não encontrado') {
+        newErrors.cep = errors.cep
+      }
     }
 
     setErrors(newErrors)
@@ -570,6 +587,21 @@ export function PatientRegisterPage() {
       showToast('Paciente cadastrado com sucesso!', 'success')
       setTimeout(() => navigate('/pacientes'), 1500)
     } catch (err: unknown) {
+      const issues = getValidationIssues(err)
+      if (issues) {
+        const fieldMap: Record<string, keyof FormData> = {
+          fullName: 'tutorFullName',
+          cpf: 'tutorCpf',
+          phone: 'tutorPhone',
+          email: 'tutorEmail',
+        }
+        const mapped: Partial<Record<keyof FormData, string>> = {}
+        for (const [key, msgs] of Object.entries(issues)) {
+          const field = fieldMap[key]
+          if (field && msgs[0]) mapped[field] = msgs[0]
+        }
+        if (Object.keys(mapped).length > 0) setErrors((prev) => ({ ...prev, ...mapped }))
+      }
       const message = getErrorMessage(err, 'Ocorreu um erro inesperado. Tente novamente.')
       showToast(message, 'error')
     } finally {
@@ -1013,6 +1045,7 @@ export function PatientRegisterPage() {
               disabled={tutorMode === 'existing'}
               onChange={(e) => updateField('tutorEmail', e.target.value)}
             />
+            {errors.tutorEmail && <span className="field-error">{errors.tutorEmail}</span>}
           </div>
         </div>
 
