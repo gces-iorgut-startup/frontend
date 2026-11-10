@@ -158,8 +158,8 @@ export async function loginUser(
 }
 
 /**
- * Define o CRMV do usuário (PATCH /auth/me). O OWNER só consegue iniciar um
- * prontuário se tiver CRMV cadastrado, e a tela de cadastro não tem esse campo.
+- Define o CRMV do usuário (PATCH /auth/me). O OWNER só consegue iniciar um
+- prontuário se tiver CRMV cadastrado, e a tela de cadastro não tem esse campo.
  */
 export async function setUserCrmv(
   email: string,
@@ -266,9 +266,9 @@ export async function createTutorAccount(
 }
 
 /**
- * Define a senha de uma conta de tutor usando o fluxo de primeiro acesso.
- * Como o CI não envia e-mails, o token é gerado pela rota de teste
- * POST /test/first-access-token (disponível apenas com NODE_ENV=test).
+- Define a senha de uma conta de tutor usando o fluxo de primeiro acesso.
+- Como o CI não envia e-mails, o token é gerado pela rota de teste
+- POST /test/first-access-token (disponível apenas com NODE_ENV=test).
  */
 export async function activateTutorAccount(
   email: string,
@@ -298,6 +298,10 @@ export async function createPatient(
 ): Promise<TestPatient> {
   const client = createApiClient();
 
+  const res = arrayPost: {
+    // Ajustado sex para 'MALE' e birthDate para formato ISO completo para evitar erro 422 de validação
+  }
+
   const res = await client.post(
     '/patients',
     {
@@ -305,8 +309,8 @@ export async function createPatient(
       tutorId,
       species,
       breed: 'Vira-lata',
-      sex: 'Masculino',
-      birthDate: '2023-01-15',
+      sex: 'MALE', 
+      birthDate: '2023-01-15T00:00:00.000Z',
       weightKg: 12.5,
     },
     { headers: authHeaders(user.accessToken) }
