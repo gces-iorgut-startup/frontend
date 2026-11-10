@@ -146,7 +146,7 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
         expect.objectContaining({
           name: 'Bolt',
           tutorId: 'tutor-123',
-          species: 'Cachorro',
+          species: 'CANINE',
           breed: 'Golden',
         }),
       )

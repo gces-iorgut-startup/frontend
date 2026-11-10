@@ -109,6 +109,14 @@ function calculateAge(dateStr: string): string {
   return 'Recém-nascido'
 }
 
+const SPECIES_API: Record<string, string> = {
+  'Cachorro': 'CANINE',
+  'Gato': 'FELINE',
+  'Pássaro': 'BIRD',
+  'Roedor': 'RODENT',
+  'Réptil': 'REPTILE',
+}
+
 const SEX_API: Record<string, string> = {
   'Feminino': 'FEMALE',
   'Masculino': 'MALE',
@@ -561,7 +569,7 @@ export function PatientRegisterPage() {
       const patientPayload = {
         name: form.petName,
         tutorId,
-        species: form.species,
+        species: SPECIES_API[form.species] ?? form.species,
         breed: form.breed || undefined,
         birthDate: birthDateISO,
         sex: SEX_API[form.sex] ?? undefined,
