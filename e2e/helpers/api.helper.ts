@@ -298,10 +298,6 @@ export async function createPatient(
 ): Promise<TestPatient> {
   const client = createApiClient();
 
-  const res = arrayPost: {
-    // Ajustado sex para 'MALE' e birthDate para formato ISO completo para evitar erro 422 de validação
-  }
-
   const res = await client.post(
     '/patients',
     {
@@ -309,7 +305,7 @@ export async function createPatient(
       tutorId,
       species,
       breed: 'Vira-lata',
-      sex: 'MALE', 
+      sex: 'MALE',
       birthDate: '2023-01-15T00:00:00.000Z',
       weightKg: 12.5,
     },
