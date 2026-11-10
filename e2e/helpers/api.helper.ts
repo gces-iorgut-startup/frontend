@@ -305,8 +305,8 @@ export async function createPatient(
       tutorId,
       species,
       breed: 'Vira-lata',
-      sex: 'MALE',
-      birthDate: '2023-01-15T00:00:00.000Z',
+      sex: 'Masculino',
+      birthDate: '2023-01-15',
       weightKg: 12.5,
     },
     { headers: authHeaders(user.accessToken) }
