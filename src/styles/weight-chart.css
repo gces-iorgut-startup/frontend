@@ -1,0 +1,118 @@
+/* Gráfico de evolução de peso (CLI-04) — SVG desenhado na mão, sem lib. */
+
+.weight-chart-card {
+  border: 1px solid var(--gray-200, #e2e8f0);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+
+.weight-chart-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--gray-800, #1e293b);
+}
+
+.weight-chart-header h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.weight-chart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0 0 18px;
+}
+
+.weight-chart-summary dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-500, #64748b);
+  margin-bottom: 2px;
+}
+
+.weight-chart-summary dd {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gray-800, #1e293b);
+}
+
+.weight-chart-summary dd.is-up {
+  color: #16a34a;
+}
+
+.weight-chart-summary dd.is-down {
+  color: #dc2626;
+}
+
+.weight-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.weight-chart-svg circle {
+  cursor: pointer;
+}
+
+.weight-chart-tooltip {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-700, #334155);
+}
+
+.weight-chart-empty {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--gray-600, #475569);
+}
+
+.weight-chart-empty-hint {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--gray-500, #94a3b8);
+}
+
+/* Lista textual das aferições: o SVG não é legível por leitor de tela ponto
+   a ponto, e a tabela também serve de conferência rápida para o vet. */
+.weight-chart-readings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--gray-200, #e2e8f0);
+}
+
+.weight-chart-readings li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--gray-600, #64748b);
+}
+
+.weight-chart-readings strong {
+  color: var(--gray-800, #1e293b);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .weight-chart-card {
+    padding: 16px;
+  }
+
+  .weight-chart-summary {
+    gap: 18px;
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
+import { WeightEvolutionChart } from '../../components/WeightEvolutionChart'
 import {
   getCareFormValues,
   getClinicalRecordPayload,
@@ -30,6 +31,7 @@ import '../../styles/clinical-care.css'
 type CareTab = 'atendimento' | 'dados' | 'prontuario'
 
 const EMPTY_FORM: CareFormValues = {
+  weightKg: '',
   clinicalNotes: '',
   breathingNotes: '',
   observations: '',
@@ -517,7 +519,15 @@ export function ClinicalCarePage() {
                   </div>
                   <div className="care-summary-row">
                     <span>Peso atual:</span>
-                    <strong>{formatWeight(patient.weightKg as string | number | null | undefined)}</strong>
+                    {/* Prefere o peso já salvo neste atendimento: depois de
+                        gravar, mostrar o do cadastro soaria como se o valor
+                        digitado tivesse sido ignorado. */}
+                    <strong>
+                      {formatWeight(
+                        savedForm.weightKg ||
+                          (patient.weightKg as string | number | null | undefined)
+                      )}
+                    </strong>
                   </div>
                   <div className="care-summary-row">
                     <span>Sexo:</span>
@@ -527,6 +537,22 @@ export function ClinicalCarePage() {
               </div>
 
               {renderIougurtVetCard('care-side-card-mobile')}
+
+              {/* Peso é o primeiro campo do atendimento de propósito: é a
+                  medida que a balança dá na entrada da consulta, e é o que
+                  alimenta o gráfico de evolução. */}
+              <div className="care-form-group">
+                <label htmlFor="care-weight">Peso (kg)</label>
+                <input
+                  id="care-weight"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.weightKg}
+                  onChange={(event) => handleFieldChange('weightKg', event.target.value)}
+                  placeholder="Ex.: 12,5"
+                  disabled={record.finalized}
+                />
+              </div>
 
               <div className="care-form-group">
                 <label htmlFor="clinical-notes">Queixa principal</label>
@@ -671,6 +697,10 @@ export function ClinicalCarePage() {
 
       {activeTab === 'prontuario' && (
         <section className="care-panel">
+          {/* Durante o atendimento a curva é o contexto mais útil do
+              histórico: diz se o paciente está perdendo ou ganhando peso. */}
+          <WeightEvolutionChart history={visibleHistory} />
+
           <div className="care-history-table-wrapper">
             <table className="care-history-table">
               <thead>

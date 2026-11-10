@@ -21,6 +21,7 @@ import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
+import { WeightEvolutionChart } from '../../components/WeightEvolutionChart'
 import type {
   Appointment,
   ClinicalHistoryItem,
@@ -505,6 +506,10 @@ export function PatientDetailsPage() {
 
       {activeTab === 'prontuario' && (
         <section className="patient-records-panel">
+          {/* Recebe o histórico já carregado: o peso por consulta vive no
+              prontuário, então não há request extra para o gráfico. */}
+          <WeightEvolutionChart history={visibleHistory} />
+
           <div className="patient-records-table-wrapper">
             <table className="patient-records-table">
               <thead>
