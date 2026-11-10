@@ -21,6 +21,7 @@ import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
+import { PatientPhotoGallery } from '../../components/PatientPhotoGallery'
 import type {
   Appointment,
   ClinicalHistoryItem,
@@ -30,7 +31,7 @@ import type {
 } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -359,6 +360,13 @@ export function PatientDetailsPage() {
         >
           Exames
         </button>
+        <button
+          className={`patient-details-tab${activeTab === 'fotos' ? ' active' : ''}`}
+          onClick={() => setActiveTab('fotos')}
+          type="button"
+        >
+          Fotos
+        </button>
       </div>
 
       {activeTab === 'dados' && (
@@ -616,6 +624,10 @@ export function PatientDetailsPage() {
           </div>
         </section>
       )}
+
+      {/* A galeria busca as próprias fotos ao montar, então só paga a request
+          quando o usuário realmente abre a aba. */}
+      {activeTab === 'fotos' && <PatientPhotoGallery patientId={patient.id} />}
 
       {showStartCareModal && (
         <div className="patient-edit-modal-overlay" role="presentation">
