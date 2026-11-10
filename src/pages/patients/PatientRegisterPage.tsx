@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Save } from 'lucide-react'
+import { ChevronLeft, Save, PawPrint, User, Plus } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
@@ -19,18 +19,14 @@ const SPECIES_OPTIONS = [
   'Outro',
 ]
 
-const SPECIES_API: Record<string, string> = {
-  Cachorro: 'CANINE',
-  Gato: 'FELINE',
-  Pássaro: 'BIRD',
-  Roedor: 'RODENT',
-  Réptil: 'REPTILE',
-}
-
-const SEX_API: Record<string, string> = {
-  Masculino: 'MALE',
-  Feminino: 'FEMALE',
-}
+const INSURANCE_OPTIONS = [
+  'Nenhum',
+  'PetLove',
+  'Porto Seguro Pet',
+  'Cobasi Saúde',
+  'Petcare',
+  'Outro',
+]
 
 const STATES_BR = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -443,6 +439,17 @@ export function PatientRegisterPage() {
     setTutorSelectionError('')
   }
 
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string
+      if (base64) updateField('photoUrl', base64)
+    }
+    reader.readAsDataURL(file)
+  }
+
   function validate(): boolean {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
     if (!form.petName.trim()) newErrors.petName = 'Nome do pet é obrigatório'
@@ -524,8 +531,8 @@ export function PatientRegisterPage() {
         }
 
         try {
-          const tutorRes = aliasPostTutor(tutorPayload)
-          tutorId = (await tutorRes).data.tutor.id
+          const tutorRes = await api.post('/tutors', tutorPayload)
+          tutorId = tutorRes.data.tutor.id
         } catch (err: unknown) {
           if (
             typeof err === 'object' &&
@@ -548,10 +555,10 @@ export function PatientRegisterPage() {
       const patientPayload = {
         name: form.petName,
         tutorId,
-        species: SPECIES_API[form.species] ?? form.species,
+        species: form.species,
         breed: form.breed || undefined,
         birthDate: birthDateISO,
-        sex: SEX_API[form.sex] ?? undefined,
+        sex: form.sex || undefined,
         weightKg: parsedWeight ?? undefined,
         observations: form.observations || undefined,
         microchip: form.hasMicrochip === 'Sim' ? (microchipValue || 'Sim') : undefined,
@@ -570,334 +577,590 @@ export function PatientRegisterPage() {
     }
   }
 
-  function aliasPostTutor(payload: unknown) {
-    return api.post('/tutors', payload)
-  }
-
   const age = calculateAge(form.birthDate)
 
   return (
-    <div className="patient-register-container">
+    <div className="register-patient-page">
+      {/* Toast */}
       {toast && (
-        <div className={`toast-notification ${toast.type}`}>
+        <div className={`register-toast ${toast.type}`} role="alert">
           {toast.message}
         </div>
       )}
 
-      <div className="page-header">
-        <button type="button" className="back-button" onClick={() => navigate('/pacientes')}>
-          <ChevronLeft size={20} />
+      {/* Top bar */}
+      <div className="register-top-bar">
+        <button
+          className="register-back-btn"
+          onClick={() => navigate('/pacientes')}
+          type="button"
+        >
+          <ChevronLeft />
           Voltar
         </button>
-        <h1>Cadastrar Novo Paciente</h1>
+        <button
+          className="register-submit-btn"
+          onClick={handleSubmit}
+          disabled={loading}
+          id="finalize-registration-btn"
+          type="button"
+        >
+          <Save />
+          {loading ? 'Salvando...' : 'Finalizar cadastro'}
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="patient-form">
-        <section className="form-section">
-          <h2>Informações do Tutor</h2>
-          
-          <div className="tutor-mode-selector">
-            <button
-              type="button"
-              className={`mode-btn ${tutorMode === 'new' ? 'active' : ''}`}
-              onClick={() => handleTutorModeChange('new')}
-            >
-              Novo Tutor
-            </button>
-            <button
-              type="button"
-              className={`mode-btn ${tutorMode === 'existing' ? 'active' : ''}`}
-              onClick={() => handleTutorModeChange('existing')}
-            >
-              Selecionar Tutor Existente
-            </button>
-          </div>
+      <h1 className="register-title">Cadastro de novo paciente</h1>
 
-          {tutorMode === 'existing' && (
-            <div className="existing-tutor-search">
-              <div className="search-input-group">
-                <input
-                  type="text"
-                  placeholder="Buscar por nome ou CPF..."
-                  value={tutorSearch}
-                  onChange={(e) => setTutorSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchTutor())}
-                />
-                <button type="button" onClick={handleSearchTutor} disabled={searchingTutor}>
-                  {searchingTutor ? 'Buscando...' : 'Buscar'}
-                </button>
-              </div>
+      <form onSubmit={handleSubmit} noValidate>
+        {/* ═══ PACIENTE ═══ */}
+        <div className="section-header">
+          <PawPrint />
+          <h2>Paciente</h2>
+        </div>
 
-              {tutorSearchResults.length > 0 && (
-                <div className="search-results-list">
-                  <select
-                    value={selectedTutorId}
-                    onChange={(e) => handleSelectExistingTutor(e.target.value)}
-                  >
-                    <option value="">Selecione um tutor na lista...</option>
-                    {tutorSearchResults.map((tutor) => (
-                      <option key={tutor.id} value={tutor.id}>
-                        {tutor.fullName} - CPF: {maskCpf(tutor.cpf)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        {/* Photo + first row of fields */}
+        <div className="form-row-photo">
+          {/* Photo */}
+          <div className="photo-upload-container">
+            <label className="register-label">Foto:</label>
+            <div 
+              className="photo-upload" 
+              title="Adicionar foto" 
+              onClick={() => document.getElementById('photo-upload')?.click()}
+            >
+              <input 
+                type="file" 
+                id="photo-upload" 
+                hidden 
+                accept="image/*" 
+                onChange={handlePhotoChange} 
+              />
+              {form.photoUrl ? (
+                <img src={form.photoUrl} alt="Pet" />
+              ) : (
+                <PawPrint />
               )}
-
-              {tutorSelectionError && <span className="error-text">{tutorSelectionError}</span>}
             </div>
-          )}
-
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Nome Completo do Tutor *</label>
-              <input
-                type="text"
-                value={form.tutorFullName}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('tutorFullName', e.target.value)}
-              />
-              {errors.tutorFullName && <span className="error-text">{errors.tutorFullName}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>CPF *</label>
-              <input
-                type="text"
-                value={form.tutorCpf}
-                disabled={tutorMode === 'existing'}
-                maxLength={14}
-                onChange={(e) => updateField('tutorCpf', maskCpf(e.target.value))}
-              />
-              {errors.tutorCpf && <span className="error-text">{errors.tutorCpf}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Telefone / WhatsApp *</label>
-              <input
-                type="text"
-                value={form.tutorPhone}
-                disabled={tutorMode === 'existing'}
-                maxLength={15}
-                onChange={(e) => updateField('tutorPhone', maskPhone(e.target.value))}
-              />
-              {errors.tutorPhone && <span className="error-text">{errors.tutorPhone}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>E-mail</label>
-              <input
-                type="email"
-                value={form.tutorEmail}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('tutorEmail', e.target.value)}
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Endereço</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>CEP</label>
-              <div className="cep-input-group">
-                <input
-                  type="text"
-                  value={form.cep}
-                  disabled={tutorMode === 'existing'}
-                  maxLength={9}
-                  placeholder="00000-000"
-                  onChange={(e) => handleCepChange(e.target.value)}
-                />
-                {isFetchingCep && <span className="cep-loading">Buscando...</span>}
-              </div>
-              {errors.cep && <span className="error-text">{errors.cep}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Estado (UF)</label>
-              <select
-                value={form.state}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('state', e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                {STATES_BR.map((st) => (
-                  <option key={st} value={st}>{st}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Cidade</label>
-              <input
-                type="text"
-                value={form.city}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('city', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Bairro</label>
-              <input
-                type="text"
-                value={form.neighborhood}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('neighborhood', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Rua / Logradouro</label>
-              <input
-                type="text"
-                value={form.street}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('street', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Número</label>
-              <input
-                type="text"
-                ref={addressNumberRef}
-                value={form.addressNumber}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('addressNumber', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Complemento</label>
-              <input
-                type="text"
-                value={form.complement}
-                disabled={tutorMode === 'existing'}
-                onChange={(e) => updateField('complement', e.target.value)}
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Informações do Paciente (Pet)</h2>
-          
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Nome do Pet *</label>
-              <input
-                type="text"
-                value={form.petName}
-                onChange={(e) => updateField('petName', e.target.value)}
-              />
-              {errors.petName && <span className="error-text">{errors.petName}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Espécie *</label>
-              <select
-                value={form.species}
-                onChange={(e) => updateField('species', e.target.value)}
-              >
-                <option value="">Selecione a espécie...</option>
-                {SPECIES_OPTIONS.map((spec) => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-              {errors.species && <span className="error-text">{errors.species}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Raça *</label>
-              <input
-                type="text"
-                value={form.breed}
-                onChange={(e) => updateField('breed', e.target.value)}
-              />
-              {errors.breed && <span className="error-text">{errors.breed}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Sexo *</label>
-              <select
-                value={form.sex}
-                onChange={(e) => updateField('sex', e.target.value)}
-              >
-                <option value="">Selecione o sexo...</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Feminino">Feminino</option>
-              </select>
-              {errors.sex && <span className="error-text">{errors.sex}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Data de Nascimento *</label>
-              <input
-                type="text"
-                placeholder="DD/MM/AAAA"
-                maxLength={10}
-                value={form.birthDate}
-                onChange={(e) => updateField('birthDate', maskDate(e.target.value))}
-              />
-              {age && <span className="helper-text">Idade calculada: {age}</span>}
-              {errors.birthDate && <span className="error-text">{errors.birthDate}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Peso (kg)</label>
-              <input
-                type="text"
-                placeholder="Ex: 5,4"
-                value={form.weightKg}
-                onChange={(e) => updateField('weightKg', e.target.value)}
-              />
-              {errors.weightKg && <span className="error-text">{errors.weightKg}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Possui Microchip? *</label>
-              <select
-                value={form.hasMicrochip}
-                onChange={(e) => handleMicrochipSelection(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                <option value="Sim">Sim</option>
-                <option value="Não">Não</option>
-              </select>
-              {errors.hasMicrochip && <span className="error-text">{errors.hasMicrochip}</span>}
-            </div>
-
-            {form.hasMicrochip === 'Sim' && (
-              <div className="form-group">
-                <label>Número do Microchip *</label>
-                <input
-                  type="text"
-                  value={form.microchipNumber}
-                  onChange={(e) => updateField('microchipNumber', e.target.value)}
-                />
-                {errors.microchipNumber && <span className="error-text">{errors.microchipNumber}</span>}
-              </div>
-            )}
+            <label className="photo-upload-label" htmlFor="photo-upload">
+              <Plus size={14} /> {form.photoUrl ? 'Trocar foto' : 'Adicionar foto'}
+            </label>
           </div>
 
-          <div className="form-group full-width">
-            <label>Observações Clínicas</label>
-            <textarea
-              rows={3}
-              value={form.observations}
-              onChange={(e) => updateField('observations', e.target.value)}
+          {/* Nome do Pet */}
+          <div className="form-group flex-1">
+            <label className="register-label" htmlFor="pet-name">
+              Nome do Pet: <span className="required">*</span>
+            </label>
+            <input
+              id="pet-name"
+              className="register-input"
+              type="text"
+              placeholder="Nome"
+              value={form.petName}
+              onChange={(e) => updateField('petName', e.target.value)}
+            />
+            {errors.petName && <span className="field-error">{errors.petName}</span>}
+          </div>
+
+          {/* Data de nascimento */}
+          <div className="form-group flex-1">
+            <label className="register-label" htmlFor="birth-date">
+              Data de nascimento: <span className="required">*</span>
+            </label>
+            <input
+              id="birth-date"
+              className="register-input"
+              type="text"
+              placeholder="dd/mm/aaaa"
+              value={form.birthDate}
+              onChange={(e) => updateField('birthDate', maskDate(e.target.value))}
+              maxLength={10}
+            />
+            {errors.birthDate && <span className="field-error">{errors.birthDate}</span>}
+          </div>
+
+          {/* Idade (auto-calculated) */}
+          <div className="form-group flex-1">
+            <label className="register-label">Idade:</label>
+            <input
+              className="register-input"
+              type="text"
+              placeholder="Idade"
+              value={age}
+              readOnly
+              style={{ background: 'var(--gray-50)', cursor: 'default' }}
             />
           </div>
-        </section>
 
-        <div className="form-actions">
-          <button type="submit" className="save-btn" disabled={loading}>
-            <Save size={18} />
-            {loading ? 'Salvando...' : 'Salvar Paciente'}
-          </button>
+          {/* Espécie */}
+          <div className="form-group flex-1">
+            <label className="register-label" htmlFor="species">
+              Espécie: <span className="required">*</span>
+            </label>
+            <select
+              id="species"
+              className="register-select"
+              value={form.species}
+              onChange={(e) => updateField('species', e.target.value)}
+            >
+              <option value="">Selecionar</option>
+              {SPECIES_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {errors.species && <span className="field-error">{errors.species}</span>}
+          </div>
+        </div>
+
+        {/* Second row: Raça, Peso, Sexo, Microchip */}
+        <div className="form-row form-row-4">
+          {/* Raça */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="breed">
+              Raça: <span className="required">*</span>
+            </label>
+            <input
+              id="breed"
+              className="register-input"
+              type="text"
+              placeholder="Raça"
+              value={form.breed}
+              onChange={(e) => updateField('breed', e.target.value)}
+            />
+            {errors.breed && <span className="field-error">{errors.breed}</span>}
+          </div>
+
+          {/* Peso atual */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="weight">
+              Peso atual:
+            </label>
+            <input
+              id="weight"
+              className="register-input"
+              type="text"
+              placeholder="Peso"
+              value={form.weightKg}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^\d.,]/g, '')
+                updateField('weightKg', val)
+              }}
+            />
+            {errors.weightKg && <span className="field-error">{errors.weightKg}</span>}
+          </div>
+
+          {/* Sexo */}
+          <div className="form-group">
+            <label className="register-label">
+              Sexo: <span className="required">*</span>
+            </label>
+            <div className="radio-group">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="sex"
+                  value="Feminino"
+                  checked={form.sex === 'Feminino'}
+                  onChange={(e) => updateField('sex', e.target.value)}
+                />
+                Feminino
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="sex"
+                  value="Masculino"
+                  checked={form.sex === 'Masculino'}
+                  onChange={(e) => updateField('sex', e.target.value)}
+                />
+                Masculino
+              </label>
+            </div>
+            {errors.sex && <span className="field-error">{errors.sex}</span>}
+          </div>
+
+          {/* Microchip */}
+          <div className="form-group">
+            <label className="register-label">
+              Possui microchip? <span className="required">*</span>
+            </label>
+            <div className="radio-group">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="microchip"
+                  value="Sim"
+                  checked={form.hasMicrochip === 'Sim'}
+                  onChange={(e) => handleMicrochipSelection(e.target.value)}
+                />
+                Sim
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="microchip"
+                  value="Não"
+                  checked={form.hasMicrochip === 'Não'}
+                  onChange={(e) => handleMicrochipSelection(e.target.value)}
+                />
+                Não
+              </label>
+            </div>
+            {errors.hasMicrochip && <span className="field-error">{errors.hasMicrochip}</span>}
+          </div>
+        </div>
+
+        {form.hasMicrochip === 'Sim' && (
+          <div className="form-row form-row-1">
+            <div className="form-group">
+              <label className="register-label" htmlFor="microchip-number">
+                Número do microchip: <span className="required">*</span>
+              </label>
+              <input
+                id="microchip-number"
+                className="register-input"
+                type="text"
+                placeholder="Digite o número do microchip"
+                value={form.microchipNumber}
+                onChange={(e) => updateField('microchipNumber', e.target.value)}
+              />
+              {errors.microchipNumber && <span className="field-error">{errors.microchipNumber}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Observações */}
+        <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
+          <label className="register-label" htmlFor="observations">
+            Observações:
+          </label>
+          <textarea
+            id="observations"
+            className="register-textarea"
+            placeholder="Escreva uma observação se necessário"
+            value={form.observations}
+            onChange={(e) => updateField('observations', e.target.value)}
+          />
+        </div>
+
+        <hr className="form-separator" />
+
+        {/* ═══ TUTOR ═══ */}
+        <div className="section-header">
+          <User />
+          <h2>Tutor</h2>
+        </div>
+
+        <p className="section-subtitle">Vínculo do tutor</p>
+
+        <div className="form-row form-row-1">
+          <div className="form-group">
+            <label className="register-label">Como deseja vincular o tutor?</label>
+            <div className="radio-group">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="tutor-mode"
+                  checked={tutorMode === 'new'}
+                  onChange={() => handleTutorModeChange('new')}
+                />
+                Cadastrar novo tutor
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="tutor-mode"
+                  checked={tutorMode === 'existing'}
+                  onChange={() => handleTutorModeChange('existing')}
+                />
+                Selecionar tutor existente
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {tutorMode === 'existing' && (
+          <>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <label className="register-label" htmlFor="existing-tutor-search">
+                  Buscar tutor por CPF ou nome:
+                </label>
+                <input
+                  id="existing-tutor-search"
+                  className="register-input"
+                  type="text"
+                  placeholder="Digite CPF ou nome do tutor"
+                  value={tutorSearch}
+                  onChange={(e) => setTutorSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void handleSearchTutor()
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="register-label">&nbsp;</label>
+                <button
+                  className="register-submit-btn tutor-search-btn"
+                  type="button"
+                  onClick={() => void handleSearchTutor()}
+                  disabled={searchingTutor || !tutorSearch.trim() || loading}
+                >
+                  {searchingTutor ? 'Buscando...' : 'Buscar tutor'}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-row form-row-1">
+              <div className="form-group">
+                <label className="register-label" htmlFor="existing-tutor-results">
+                  Resultado da busca:
+                </label>
+                <select
+                  id="existing-tutor-results"
+                  className="register-select"
+                  value={selectedTutorId}
+                  onChange={(e) => handleSelectExistingTutor(e.target.value)}
+                  disabled={searchingTutor || tutorSearchResults.length === 0}
+                >
+                  <option value="">
+                    {tutorSearchResults.length > 0 ? 'Selecione um tutor' : 'Nenhum tutor listado'}
+                  </option>
+                  {tutorSearchResults.map((tutor) => (
+                    <option key={tutor.id} value={tutor.id}>
+                      {`${tutor.fullName} • CPF ${maskCpf(tutor.cpf)}`}
+                    </option>
+                  ))}
+                </select>
+                {tutorSelectionError && <span className="field-error">{tutorSelectionError}</span>}
+              </div>
+            </div>
+          </>
+        )}
+
+        <p className="section-subtitle">Dados básicos</p>
+
+        <div className="form-row form-row-4">
+          {/* Nome completo */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="tutor-name">
+              Nome completo:
+            </label>
+            <input
+              id="tutor-name"
+              className="register-input"
+              type="text"
+              placeholder="Nome completo"
+              value={form.tutorFullName}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('tutorFullName', e.target.value)}
+            />
+            {errors.tutorFullName && <span className="field-error">{errors.tutorFullName}</span>}
+          </div>
+
+          {/* CPF */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="tutor-cpf">
+              CPF:
+            </label>
+            <input
+              id="tutor-cpf"
+              className="register-input"
+              type="text"
+              placeholder="___.___.___-__"
+              value={form.tutorCpf}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('tutorCpf', maskCpf(e.target.value))}
+              maxLength={14}
+            />
+            {errors.tutorCpf && <span className="field-error">{errors.tutorCpf}</span>}
+          </div>
+
+          {/* Contato */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="tutor-phone">
+              Contato:
+            </label>
+            <input
+              id="tutor-phone"
+              className="register-input"
+              type="text"
+              placeholder="(__) _____-____"
+              value={form.tutorPhone}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('tutorPhone', maskPhone(e.target.value))}
+              maxLength={15}
+            />
+            {errors.tutorPhone && <span className="field-error">{errors.tutorPhone}</span>}
+          </div>
+
+          {/* Email */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="tutor-email">
+              Email:
+            </label>
+            <input
+              id="tutor-email"
+              className="register-input"
+              type="email"
+              placeholder="exemplo@gmail.com"
+              value={form.tutorEmail}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('tutorEmail', e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Convênio */}
+        <div className="form-row form-row-4" style={{ marginBottom: 'var(--space-lg)' }}>
+          <div className="form-group">
+            <label className="register-label" htmlFor="tutor-insurance">
+              Convênio:
+            </label>
+            <select
+              id="tutor-insurance"
+              className="register-select"
+              value={form.tutorInsurance}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('tutorInsurance', e.target.value)}
+            >
+              <option value="">Selecionar</option>
+              {INSURANCE_OPTIONS.map((i) => (
+                <option key={i} value={i}>{i}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <p className="section-subtitle">Endereço</p>
+
+        <div className="form-row form-row-4">
+          {/* CEP */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="cep">
+              CEP:
+            </label>
+            <input
+              id="cep"
+              className="register-input"
+              type="text"
+              placeholder="_____-___"
+              value={form.cep}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => void handleCepChange(e.target.value)}
+              maxLength={9}
+              inputMode="numeric"
+            />
+            {isFetchingCep && <span className="field-hint">Buscando endereço…</span>}
+            {errors.cep && <span className="field-error">{errors.cep}</span>}
+          </div>
+
+          {/* Estado */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="state">
+              Estado:
+            </label>
+            <select
+              id="state"
+              className="register-select"
+              value={form.state}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('state', e.target.value)}
+            >
+              <option value="">Selecionar</option>
+              {STATES_BR.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Cidade */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="city">
+              Cidade:
+            </label>
+            <input
+              id="city"
+              className="register-input"
+              type="text"
+              placeholder="Cidade"
+              value={form.city}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('city', e.target.value)}
+            />
+          </div>
+
+          {/* Bairro */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="neighborhood">
+              Bairro:
+            </label>
+            <input
+              id="neighborhood"
+              className="register-input"
+              type="text"
+              placeholder="Bairro"
+              value={form.neighborhood}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('neighborhood', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-row form-row-3">
+          {/* Logradouro */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="street">
+              Logradouro:
+            </label>
+            <input
+              id="street"
+              className="register-input"
+              type="text"
+              placeholder="Logradouro"
+              value={form.street}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('street', e.target.value)}
+            />
+          </div>
+
+          {/* Número */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="address-number">
+              Número:
+            </label>
+            <input
+              id="address-number"
+              ref={addressNumberRef}
+              className="register-input"
+              type="text"
+              placeholder="Número"
+              value={form.addressNumber}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('addressNumber', e.target.value)}
+            />
+          </div>
+
+          {/* Complemento */}
+          <div className="form-group">
+            <label className="register-label" htmlFor="complement">
+              Complemento:
+            </label>
+            <input
+              id="complement"
+              className="register-input"
+              type="text"
+              placeholder="Complemento"
+              value={form.complement}
+              disabled={tutorMode === 'existing'}
+              onChange={(e) => updateField('complement', e.target.value)}
+            />
+          </div>
         </div>
       </form>
     </div>
