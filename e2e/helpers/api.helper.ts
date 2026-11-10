@@ -298,33 +298,40 @@ export async function createPatient(
 ): Promise<TestPatient> {
   const client = createApiClient();
 
-  const res = await client.post(
-    '/patients',
-    {
+  try {
+    const res = await client.post(
+      '/patients',
+      {
+        name,
+        tutorId,
+        species,
+        breed: 'Vira-lata',
+        sex: 'Masculino',
+        birthDate: '2023-01-15',
+        weightKg: 12.5,
+      },
+      { headers: authHeaders(user.accessToken) }
+    );
+
+    const data = res.data.patient || res.data;
+
+    const patient: TestPatient = {
+      id: data.id,
       name,
       tutorId,
       species,
-      breed: 'Vira-lata',
-      sex: 'Masculino',
-      birthDate: '2023-01-15',
-      weightKg: 12.5,
-    },
-    { headers: authHeaders(user.accessToken) }
-  );
+    };
 
-  const data = res.data.patient || res.data;
-
-  const patient: TestPatient = {
-    id: data.id,
-    name,
-    tutorId,
-    species,
-  };
-
-  ctx.patients.push(patient);
-  return patient;
+    ctx.patients.push(patient);
+    return patient;
+  } catch (err: any) {
+    if (err.response) {
+      console.error('=== DETALHES DO ERRO 422 DO BACKEND ===');
+      console.error(JSON.stringify(err.response.data, null, 2));
+    }
+    throw err;
+  }
 }
-
 export async function createAppointment(
   ctx: TestContext,
   user: TestUser,
