@@ -324,8 +324,8 @@ export async function createPatient(
 
     ctx.patients.push(patient);
     return patient;
-  } catch (err: any) {
-    if (err.response) {
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response) {
       console.error('=== DETALHES DO ERRO 422 DO BACKEND ===');
       console.error(JSON.stringify(err.response.data, null, 2));
     }
