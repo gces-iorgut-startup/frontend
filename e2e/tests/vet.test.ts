@@ -39,6 +39,49 @@ async function selectCustomOption(driver: WebDriver, labelText: string, optionTe
   await optionEl.click();
 }
 
+// Guarda no navegador o corpo de toda resposta HTTP >= 400 (axios usa XMLHttpRequest)
+async function installApiErrorCapture(driver: WebDriver) {
+  await driver.executeScript(`
+    if (window.__apiErrorsInstalled) return;
+    window.__apiErrorsInstalled = true;
+    window.__apiErrors = [];
+
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__method = method;
+      this.__url = url;
+      return origOpen.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.send = function (body) {
+      this.addEventListener('loadend', () => {
+        if (this.status >= 400) {
+          window.__apiErrors.push({
+            method: this.__method,
+            url: this.__url,
+            status: this.status,
+            requestBody: typeof body === 'string' ? body : null,
+            responseBody: this.responseText,
+          });
+        }
+      });
+      return origSend.apply(this, arguments);
+    };
+  `);
+}
+
+async function dumpApiErrors(driver: WebDriver, label: string) {
+  try {
+    const errors = await driver.executeScript('return window.__apiErrors || [];');
+    console.log(`--- API ERRORS (${label}) ---`);
+    console.log(JSON.stringify(errors, null, 2));
+  } catch {
+    console.log(`--- API ERRORS (${label}): não foi possível ler ---`);
+  }
+}
+
 describe('Veterinarian Flow E2E - Continuous Journey', function () {
   let driver: WebDriver;
   let petName: string;

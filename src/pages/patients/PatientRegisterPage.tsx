@@ -109,13 +109,29 @@ function calculateAge(dateStr: string): string {
   return 'Recém-nascido'
 }
 
-function parseDateBR(dateStr: string): string | undefined {
+const SPECIES_API: Record<string, string> = {
+  'Cachorro': 'CANINE',
+  'Gato': 'FELINE',
+  'Pássaro': 'BIRD',
+  'Roedor': 'RODENT',
+  'Réptil': 'REPTILE',
+  'Peixe': 'FISH',
+  'Outro': 'OTHER',
+}
+
+const SEX_API: Record<string, string> = {
+  'Feminino': 'FEMALE',
+  'Masculino': 'MALE',
+}
+
+// dd/mm/aaaa -> aaaa-mm-dd (sem passar por Date, para não deslocar o dia por fuso)
+function parseDateBRToApi(dateStr: string): string | undefined {
   if (!dateStr || dateStr.length < 10) return undefined
   const parts = dateStr.split('/')
   if (parts.length !== 3) return undefined
-  const [d, m, y] = parts.map(Number)
-  if (isNaN(d) || isNaN(m) || isNaN(y)) return undefined
-  return new Date(y, m - 1, d).toISOString()
+  const [d, m, y] = parts
+  if (!d || !m || !y) return undefined
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
 }
 
 function isValidDateBR(dateStr: string): boolean {
@@ -279,7 +295,7 @@ export function PatientRegisterPage() {
 
   function showToast(message: string, type: 'success' | 'error') {
     setToast({ message, type })
-    setTimeout(() => setToast(null), 4000)
+    setTimeout(() => setToast(null), type === 'error' ? 10000 : 4000)
   }
 
   function handleMicrochipSelection(value: string) {
@@ -549,16 +565,16 @@ export function PatientRegisterPage() {
       }
 
       // 3. Create patient
-      const birthDateISO = parseDateBR(form.birthDate)
+      const birthDateISO = parseDateBRToApi(form.birthDate)
       const microchipValue = form.microchipNumber.trim()
       const parsedWeight = extractWeightNumber(form.weightKg)
       const patientPayload = {
         name: form.petName,
         tutorId,
-        species: form.species,
+        species: SPECIES_API[form.species] ?? form.species,
         breed: form.breed || undefined,
         birthDate: birthDateISO,
-        sex: form.sex || undefined,
+        sex: SEX_API[form.sex] ?? undefined,
         weightKg: parsedWeight ?? undefined,
         observations: form.observations || undefined,
         microchip: form.hasMicrochip === 'Sim' ? (microchipValue || 'Sim') : undefined,
