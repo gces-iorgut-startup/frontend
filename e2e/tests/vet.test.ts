@@ -221,23 +221,28 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
     const tutorPhoneInput = await driver.findElement(By.id('tutor-phone'));
     await tutorPhoneInput.sendKeys(tutorPhone);
 
+    await installApiErrorCapture(driver);
+
     await registerPage.submit();
 
     try {
       await driver.wait(async () => {
         const url = await driver.getCurrentUrl();
-        return url.endsWith('/pacientes') || url.endsWith('/pacientes/');
+        if (url.endsWith('/pacientes') || url.endsWith('/pacientes/')) return true;
+
+        const failed = (await driver.executeScript('return (window.__apiErrors || []).length;')) as number;
+        return failed > 0;
       }, 15000);
-    } catch (err) {
-      const errors = await driver.findElements(By.className('field-error'));
-      const errorTexts = await Promise.all(errors.map(e => e.getText()));
-      console.log('--- VET REGISTRATION FAILED ---');
-      console.log('Field errors:', errorTexts);
-      
-      const toast = await driver.findElements(By.className('register-toast'));
-      if (toast.length > 0) {
-        console.log('Toast Message:', await toast[0].getText());
+
+      const url = await driver.getCurrentUrl();
+      if (!(url.endsWith('/pacientes') || url.endsWith('/pacientes/'))) {
+        await dumpApiErrors(driver, 'Passo 2 - cadastro de paciente');
+        const toast = await driver.findElements(By.className('register-toast'));
+        if (toast.length > 0) console.log('Toast:', await toast[0].getText());
+        throw new Error('Cadastro de paciente falhou (veja API ERRORS acima)');
       }
+    } catch (err) {
+      await dumpApiErrors(driver, 'Passo 2 - catch');
       throw err;
     }
   });
