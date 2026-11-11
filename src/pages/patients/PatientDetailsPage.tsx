@@ -17,6 +17,11 @@ import { api } from '../../lib/api'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { examService } from '../../lib/examService'
+import {
+  getPatientSexLabel,
+  getPatientSpeciesLabel,
+  getReproductiveConditionLabel,
+} from '../../lib/patientFields'
 import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
@@ -385,7 +390,7 @@ export function PatientDetailsPage() {
               </div>
               <div className="patient-details-info-row">
                 <span>Sexo:</span>
-                <strong>{patient.sex || '—'}</strong>
+                <strong>{getPatientSexLabel(patient.sex)}</strong>
               </div>
               <div className="patient-details-info-row">
                 <span>Data de nascimento:</span>
@@ -405,7 +410,7 @@ export function PatientDetailsPage() {
               </div>
               <div className="patient-details-info-row">
                 <span>Espécie:</span>
-                <strong>{patient.species}</strong>
+                <strong>{getPatientSpeciesLabel(patient.species)}</strong>
               </div>
               <div className="patient-details-info-row">
                 <span>Observações:</span>
@@ -414,6 +419,14 @@ export function PatientDetailsPage() {
               <div className="patient-details-info-row">
                 <span>Raça:</span>
                 <strong>{patient.breed || '—'}</strong>
+              </div>
+              <div className="patient-details-info-row">
+                <span>Condição reprodutiva:</span>
+                <strong>{getReproductiveConditionLabel(patient.reproductiveCondition)}</strong>
+              </div>
+              <div className="patient-details-info-row">
+                <span>Pelagem:</span>
+                <strong>{patient.coatDescription || '—'}</strong>
               </div>
             </div>
           </div>

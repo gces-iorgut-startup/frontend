@@ -5,19 +5,17 @@ import { api } from '../../lib/api'
 import { getErrorMessage, getValidationIssues } from '../../lib/errorMessage'
 import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
 import { CepNotFoundError, CepRequestError, fetchAddressByCep } from '../../lib/cep'
+import {
+  PATIENT_SEX_OPTIONS,
+  PATIENT_SPECIES_OPTIONS,
+  REPRODUCTIVE_CONDITION_OPTIONS,
+  type PatientSex,
+  type PatientSpecies,
+  type ReproductiveCondition,
+} from '../../lib/patientFields'
 import { TutorsService } from '../../services/tutors.service'
-import type { Tutor } from '../../types'
+import type { CreatePatientRequest, Tutor } from '../../types'
 import '../../styles/patients.css'
-
-const SPECIES_OPTIONS = [
-  'Cachorro',
-  'Gato',
-  'Pássaro',
-  'Roedor',
-  'Réptil',
-  'Peixe',
-  'Outro',
-]
 
 const INSURANCE_OPTIONS = [
   'Nenhum',
@@ -39,9 +37,11 @@ interface FormData {
   // Patient
   petName: string
   birthDate: string
-  species: string
+  species: PatientSpecies | ''
   breed: string
-  sex: string
+  sex: PatientSex | ''
+  reproductiveCondition: ReproductiveCondition | ''
+  coatDescription: string
   weightKg: string
   hasMicrochip: string
   microchipNumber: string
@@ -69,6 +69,8 @@ const initialForm: FormData = {
   species: '',
   breed: '',
   sex: '',
+  reproductiveCondition: '',
+  coatDescription: '',
   weightKg: '',
   hasMicrochip: '',
   microchipNumber: '',
@@ -569,13 +571,15 @@ export function PatientRegisterPage() {
       const birthDateISO = parseDateBR(form.birthDate)
       const microchipValue = form.microchipNumber.trim()
       const parsedWeight = extractWeightNumber(form.weightKg)
-      const patientPayload = {
+      const patientPayload: CreatePatientRequest = {
         name: form.petName,
         tutorId,
-        species: form.species,
+        species: form.species as PatientSpecies,
         breed: form.breed || undefined,
         birthDate: birthDateISO,
-        sex: form.sex || undefined,
+        sex: form.sex as PatientSex,
+        reproductiveCondition: form.reproductiveCondition || undefined,
+        coatDescription: form.coatDescription.trim() || undefined,
         weightKg: parsedWeight ?? undefined,
         observations: form.observations || undefined,
         microchip: form.hasMicrochip === 'Sim' ? (microchipValue || 'Sim') : undefined,
@@ -734,11 +738,11 @@ export function PatientRegisterPage() {
               id="species"
               className="register-select"
               value={form.species}
-              onChange={(e) => updateField('species', e.target.value)}
+              onChange={(e) => updateField('species', e.target.value as PatientSpecies | '')}
             >
               <option value="">Selecionar</option>
-              {SPECIES_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {PATIENT_SPECIES_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
             {errors.species && <span className="field-error">{errors.species}</span>}
@@ -788,26 +792,18 @@ export function PatientRegisterPage() {
               Sexo: <span className="required">*</span>
             </label>
             <div className="radio-group">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="sex"
-                  value="Feminino"
-                  checked={form.sex === 'Feminino'}
-                  onChange={(e) => updateField('sex', e.target.value)}
-                />
-                Feminino
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="sex"
-                  value="Masculino"
-                  checked={form.sex === 'Masculino'}
-                  onChange={(e) => updateField('sex', e.target.value)}
-                />
-                Masculino
-              </label>
+              {PATIENT_SEX_OPTIONS.map((option) => (
+                <label className="radio-option" key={option.value}>
+                  <input
+                    type="radio"
+                    name="sex"
+                    value={option.value}
+                    checked={form.sex === option.value}
+                    onChange={(e) => updateField('sex', e.target.value as PatientSex)}
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
             {errors.sex && <span className="field-error">{errors.sex}</span>}
           </div>
@@ -861,6 +857,40 @@ export function PatientRegisterPage() {
             </div>
           </div>
         )}
+
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <label className="register-label" htmlFor="reproductive-condition">
+              Condição reprodutiva:
+            </label>
+            <select
+              id="reproductive-condition"
+              className="register-select"
+              value={form.reproductiveCondition}
+              onChange={(e) => updateField('reproductiveCondition', e.target.value as ReproductiveCondition | '')}
+            >
+              <option value="">Não informado</option>
+              {REPRODUCTIVE_CONDITION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="register-label" htmlFor="coat-description">
+              Descrição da pelagem:
+            </label>
+            <input
+              id="coat-description"
+              className="register-input"
+              type="text"
+              placeholder="Ex.: caramelo, pelo curto"
+              value={form.coatDescription}
+              maxLength={500}
+              onChange={(e) => updateField('coatDescription', e.target.value)}
+            />
+          </div>
+        </div>
 
         {/* Observações */}
         <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>

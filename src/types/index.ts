@@ -103,18 +103,24 @@ export interface UpdateTutorRequest {
 }
 
 // ── Patient ───────────────────────────────────────
+export type PatientSpecies = 'CANINE' | 'FELINE' | 'BIRD' | 'RODENT' | 'REPTILE'
+export type PatientSex = 'MALE' | 'FEMALE' | 'UNDETERMINED'
+export type ReproductiveCondition = 'FERTILE' | 'NEUTERED'
+
 export interface Patient {
   id: string
   name: string
   photoUrl?: string | null
   birthDate?: string | null
-  sex?: string | null
+  sex?: PatientSex | string | null
   weightKg?: number | null
   observations?: string | null
   microchip?: string | null
   allergies?: string | null
-  species: string
+  species: PatientSpecies | string
   breed?: string | null
+  reproductiveCondition?: ReproductiveCondition | null
+  coatDescription?: string | null
   tutorId: string
   createdAt: string
   updatedAt: string
@@ -124,10 +130,12 @@ export interface Patient {
 export interface CreatePatientRequest {
   name: string
   tutorId: string
-  species: string
+  species: PatientSpecies
   breed?: string
   birthDate?: string
-  sex?: string
+  sex: PatientSex
+  reproductiveCondition?: ReproductiveCondition
+  coatDescription?: string
   weightKg?: number
   observations?: string
   microchip?: string
@@ -137,10 +145,12 @@ export interface CreatePatientRequest {
 
 export interface UpdatePatientRequest {
   name?: string
-  species?: string
+  species?: PatientSpecies
   breed?: string
   birthDate?: string
-  sex?: string
+  sex?: PatientSex
+  reproductiveCondition?: ReproductiveCondition | null
+  coatDescription?: string | null
   weightKg?: number
   observations?: string
   microchip?: string
@@ -153,9 +163,11 @@ export interface RegisterPatientFormData {
   // Patient
   petName: string
   birthDate: string
-  species: string
+  species: PatientSpecies | ''
   breed: string
-  sex: string
+  sex: PatientSex | ''
+  reproductiveCondition: ReproductiveCondition | ''
+  coatDescription: string
   weightKg: string
   hasMicrochip: string
   observations: string
