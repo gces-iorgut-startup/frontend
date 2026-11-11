@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Filter, Plus, LogIn, X, Calendar } from 'lucide-react'
 import { api } from '../../lib/api'
+import { getPatientSpeciesLabel, PATIENT_SPECIES_OPTIONS } from '../../lib/patientFields'
 import type { Patient } from '../../types'
 import '../../styles/patients.css'
 
@@ -157,13 +158,9 @@ export function PatientsListPage() {
                       onChange={(e) => setFilterSpecies(e.target.value)}
                     >
                       <option value="">Selecionar</option>
-                      <option value="Cachorro">Cachorro</option>
-                      <option value="Gato">Gato</option>
-                      <option value="Pássaro">Pássaro</option>
-                      <option value="Roedor">Roedor</option>
-                      <option value="Réptil">Réptil</option>
-                      <option value="Peixe">Peixe</option>
-                      <option value="Outro">Outro</option>
+                      {PATIENT_SPECIES_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -232,7 +229,7 @@ export function PatientsListPage() {
                     <td>{p.name}</td>
                     <td>{p.tutor?.fullName ?? '—'}</td>
                     <td>{formatDate(p.updatedAt)}</td>
-                    <td>{p.species}</td>
+                    <td>{getPatientSpeciesLabel(p.species)}</td>
                     <td style={{ textAlign: 'right' }}>
                       <button
                         className="table-action-btn"
