@@ -294,7 +294,7 @@ export async function createPatient(
   user: TestUser,
   tutorId: string,
   name: string = TEST_DATA.PET_DOG_NAME,
-  species: string = 'Cachorro'
+  species: string = 'CANINE'
 ): Promise<TestPatient> {
   const client = createApiClient();
 
@@ -305,7 +305,7 @@ export async function createPatient(
       tutorId,
       species,
       breed: 'Vira-lata',
-      sex: 'Masculino',
+      sex: 'MALE',
       birthDate: '2023-01-15',
       weightKg: 12.5,
     },

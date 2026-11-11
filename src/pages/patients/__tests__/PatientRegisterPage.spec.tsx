@@ -121,9 +121,11 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
 
     await user.type(screen.getByLabelText(/Nome do Pet/i), 'Bolt')
     await user.type(screen.getByLabelText(/Data de nascimento/i), '10052022')
-    await user.selectOptions(screen.getByLabelText(/Espécie/i), 'Cachorro')
+    await user.selectOptions(screen.getByLabelText(/Espécie/i), 'CANINE')
     await user.type(screen.getByLabelText(/Raça/i), 'Golden')
-    await user.click(screen.getByLabelText('Masculino'))
+    await user.click(screen.getByLabelText('Indeterminado'))
+    await user.selectOptions(screen.getByLabelText(/Condição reprodutiva/i), 'NEUTERED')
+    await user.type(screen.getByLabelText(/Descrição da pelagem/i), 'Dourada e longa')
     await user.click(screen.getByLabelText('Não'))
 
     await user.type(screen.getByLabelText(/Nome completo/i), 'Mariana Costa')
@@ -146,8 +148,11 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
         expect.objectContaining({
           name: 'Bolt',
           tutorId: 'tutor-123',
-          species: 'Cachorro',
+          species: 'CANINE',
           breed: 'Golden',
+          sex: 'UNDETERMINED',
+          reproductiveCondition: 'NEUTERED',
+          coatDescription: 'Dourada e longa',
         }),
       )
     })
