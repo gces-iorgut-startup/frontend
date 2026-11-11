@@ -63,8 +63,8 @@ export async function setupGlobalFixture(): Promise<void> {
     email: 'ricardo.global@iougurt.com',
   });
 
-  const patientDog = await createPatient(ctx, owner, tutor.id, 'Amora Global', 'Cachorro');
-  const patientCat = await createPatient(ctx, owner, tutor.id, 'Mingau Global', 'Gato');
+  const patientDog = await createPatient(ctx, owner, tutor.id, 'Amora Global', 'CANINE');
+  const patientCat = await createPatient(ctx, owner, tutor.id, 'Mingau Global', 'FELINE');
 
   const tutorCredentials = await createTutorAccount(
     ctx,

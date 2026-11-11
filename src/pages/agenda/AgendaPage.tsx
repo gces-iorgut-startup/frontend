@@ -6,6 +6,7 @@ import {
   APPOINTMENT_CATEGORY_LABELS,
   HOME_AGENDA_CATEGORY_COLOR_CLASS,
 } from '../../lib/appointmentCategory'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import { useAgendaStore } from '../../stores/useAgendaStore'
 import type { Appointment } from '../../types'
 import '../../styles/agenda.css'
@@ -444,7 +445,7 @@ export function AgendaPage() {
                       </div>
                       <div className="detail-line">
                         <span className="detail-label">Espécie:</span>
-                        <span className="detail-value">{appt.patient?.species ?? '—'}</span>
+                        <span className="detail-value">{getPatientSpeciesLabel(appt.patient?.species)}</span>
                       </div>
                     </div>
                   </div>

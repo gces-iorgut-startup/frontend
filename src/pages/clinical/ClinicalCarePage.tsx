@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import {
   getCareFormValues,
   getClinicalRecordPayload,
@@ -149,7 +150,7 @@ function buildHistorySummary(patient: Patient, history: ClinicalHistoryItem[], v
   const lastFinished = history.find((item) => item.finalized)
 
   return {
-    species: patient.species,
+    species: getPatientSpeciesLabel(patient.species),
     age: calculateAge(patient.birthDate),
     weight: formatWeight(patient.weightKg as string | number | null | undefined),
     vaccination: nextPending
@@ -636,7 +637,7 @@ export function ClinicalCarePage() {
               <div className="care-info-row"><span>Peso atual:</span><strong>{formatWeight(patient.weightKg as string | number | null | undefined)}</strong></div>
               <div className="care-info-row"><span>Idade:</span><strong>{calculateAge(patient.birthDate)}</strong></div>
               <div className="care-info-row"><span>Microchip:</span><strong>{getMicrochipLabel(patient.microchip)}</strong></div>
-              <div className="care-info-row"><span>Espécie:</span><strong>{patient.species}</strong></div>
+              <div className="care-info-row"><span>Espécie:</span><strong>{getPatientSpeciesLabel(patient.species)}</strong></div>
               <div className="care-info-row"><span>Observações:</span><strong>{patient.observations || '—'}</strong></div>
               <div className="care-info-row"><span>Raça:</span><strong>{patient.breed || '—'}</strong></div>
             </div>
