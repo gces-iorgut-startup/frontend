@@ -460,6 +460,63 @@
   font-size: 0.875rem;
 }
 
+.patient-details-alternate-contacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.patient-details-alternate-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--space-md);
+  border: 1px solid var(--pink-100);
+  border-radius: var(--radius-lg);
+  background: var(--pink-50);
+}
+
+.patient-details-alternate-contact-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.patient-details-alternate-contact-heading strong {
+  color: var(--color-text);
+}
+
+.patient-details-alternate-contact-heading span {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--color-primary);
+  background: var(--pink-100);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.patient-details-alternate-contact-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px var(--space-lg);
+}
+
+.patient-details-alternate-contact-info span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
+.patient-details-alternate-contact-info svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
 .patient-details-subtitle {
   color: var(--gray-700);
   font-weight: 600;
@@ -840,6 +897,120 @@
   border-color: var(--color-primary);
 }
 
+.tutor-alternate-contacts {
+  margin: 0 0 var(--space-xl);
+}
+
+.tutor-alternate-contacts-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.tutor-alternate-contacts-heading .section-subtitle {
+  margin: 0 0 4px;
+}
+
+.tutor-alternate-contacts-heading span,
+.tutor-contact-empty {
+  color: var(--gray-500);
+  font-size: 0.8125rem;
+}
+
+.tutor-contact-add-btn,
+.tutor-contact-remove-btn {
+  border: 0;
+  color: var(--color-primary);
+  background: var(--pink-50);
+  cursor: pointer;
+}
+
+.tutor-contact-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tutor-contact-add-btn:hover,
+.tutor-contact-remove-btn:hover {
+  background: var(--pink-100);
+}
+
+.tutor-contact-empty {
+  padding: var(--space-md);
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.tutor-contact-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.tutor-contact-card {
+  position: relative;
+  min-width: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--pink-100);
+  border-radius: var(--radius-lg);
+  background: var(--pink-50);
+}
+
+.tutor-contact-card legend {
+  padding: 0 8px;
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tutor-contact-remove-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.tutor-contact-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--space-md);
+}
+
+.tutor-contact-whatsapp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 41px;
+  padding: 0 8px;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tutor-contact-whatsapp input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-primary);
+}
+
+.tutor-contact-whatsapp:has(input:disabled) {
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
 /* ── Radio groups ─────────────────────────────────── */
 .radio-group {
   display: flex;
@@ -1160,6 +1331,10 @@
     overflow: visible;
     padding-right: 0;
   }
+
+  .tutor-contact-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
@@ -1418,6 +1593,20 @@
 
   .patient-details-info-grid {
     gap: 8px;
+  }
+
+  .patient-details-alternate-contacts,
+  .tutor-contact-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .tutor-alternate-contacts-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tutor-contact-add-btn {
+    align-self: flex-start;
   }
 
   .patient-details-info-row {

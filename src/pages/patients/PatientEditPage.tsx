@@ -16,7 +16,15 @@ import {
   type PatientSpecies,
   type ReproductiveCondition,
 } from '../../lib/patientFields'
-import type { Patient } from '../../types'
+import { TutorAlternateContactsFields } from '../../components/patients/TutorAlternateContactsFields'
+import {
+  hasTutorContactErrors,
+  normalizeTutorContacts,
+  toTutorContactsPayload,
+  validateTutorContacts,
+  type TutorAlternateContactErrors,
+} from '../../lib/tutorContacts'
+import type { Patient, TutorAlternateContact } from '../../types'
 import '../../styles/patients.css'
 
 const INSURANCE_OPTIONS = [
@@ -210,6 +218,8 @@ export function PatientEditPage() {
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showExitModal, setShowExitModal] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [alternateContacts, setAlternateContacts] = useState<TutorAlternateContact[]>([])
+  const [alternateContactErrors, setAlternateContactErrors] = useState<TutorAlternateContactErrors[]>([])
   const [isFetchingCep, setIsFetchingCep] = useState(false)
   const cepAbortRef = useRef<AbortController | null>(null)
   const addressNumberRef = useRef<HTMLInputElement | null>(null)
@@ -232,6 +242,8 @@ export function PatientEditPage() {
         const microchipNumber = rawMicrochip !== 'Sim' && rawMicrochip !== 'Não' ? rawMicrochip : ''
 
         setPatient(patientData)
+        setAlternateContacts(normalizeTutorContacts(patientData.tutor?.alternateContacts))
+        setAlternateContactErrors([])
         setForm({
           petName: patientData.name || '',
           birthDate: toDateInputBR(patientData.birthDate),
@@ -371,8 +383,11 @@ export function PatientEditPage() {
       nextErrors.tutorEmail = 'Email invalido'
     }
 
+    const contactErrors = validateTutorContacts(alternateContacts)
+    setAlternateContactErrors(contactErrors)
+
     setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    return Object.keys(nextErrors).length === 0 && !hasTutorContactErrors(contactErrors)
   }
 
   function showValidationFeedback() {
@@ -418,6 +433,7 @@ export function PatientEditPage() {
         ...(tutorEmail ? { email: tutorEmail } : {}),
         ...(tutorInsurance ? { insurance: tutorInsurance } : {}),
         ...(address ? { address } : {}),
+        alternateContacts: toTutorContactsPayload(alternateContacts),
       }
 
       await api.put(`/patients/${id}`, {
@@ -709,6 +725,16 @@ export function PatientEditPage() {
             {errors.tutorInsurance && <span className="field-error">{errors.tutorInsurance}</span>}
           </div>
         </div>
+
+        <TutorAlternateContactsFields
+          idPrefix="edit-tutor-contact"
+          contacts={alternateContacts}
+          errors={alternateContactErrors}
+          onChange={(contacts) => {
+            setAlternateContacts(contacts)
+            setAlternateContactErrors([])
+          }}
+        />
 
         <p className="section-subtitle">Endereco</p>
 

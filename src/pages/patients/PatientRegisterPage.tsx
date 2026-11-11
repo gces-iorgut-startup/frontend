@@ -14,7 +14,15 @@ import {
   type ReproductiveCondition,
 } from '../../lib/patientFields'
 import { TutorsService } from '../../services/tutors.service'
-import type { CreatePatientRequest, Tutor } from '../../types'
+import { TutorAlternateContactsFields } from '../../components/patients/TutorAlternateContactsFields'
+import {
+  hasTutorContactErrors,
+  normalizeTutorContacts,
+  toTutorContactsPayload,
+  validateTutorContacts,
+  type TutorAlternateContactErrors,
+} from '../../lib/tutorContacts'
+import type { CreatePatientRequest, Tutor, TutorAlternateContact } from '../../types'
 import '../../styles/patients.css'
 
 const INSURANCE_OPTIONS = [
@@ -213,6 +221,8 @@ export function PatientRegisterPage() {
   const [selectedTutorId, setSelectedTutorId] = useState('')
   const [searchingTutor, setSearchingTutor] = useState(false)
   const [tutorSelectionError, setTutorSelectionError] = useState('')
+  const [alternateContacts, setAlternateContacts] = useState<TutorAlternateContact[]>([])
+  const [alternateContactErrors, setAlternateContactErrors] = useState<TutorAlternateContactErrors[]>([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
@@ -303,6 +313,8 @@ export function PatientRegisterPage() {
   }
 
   function clearTutorFields() {
+    setAlternateContacts([])
+    setAlternateContactErrors([])
     setForm((prev) => ({
       ...prev,
       tutorFullName: '',
@@ -424,6 +436,8 @@ export function PatientRegisterPage() {
     if (!tutor) return
 
     const address = extractAddressFields(tutor.address)
+    setAlternateContacts(normalizeTutorContacts(tutor.alternateContacts))
+    setAlternateContactErrors([])
     setForm((prev) => ({
       ...prev,
       tutorFullName: tutor.fullName,
@@ -503,6 +517,15 @@ export function PatientRegisterPage() {
       } else if (errors.cep === 'CEP não encontrado') {
         newErrors.cep = errors.cep
       }
+
+      const contactErrors = validateTutorContacts(alternateContacts)
+      setAlternateContactErrors(contactErrors)
+      if (hasTutorContactErrors(contactErrors)) {
+        setErrors(newErrors)
+        return false
+      }
+    } else {
+      setAlternateContactErrors([])
     }
 
     setErrors(newErrors)
@@ -547,6 +570,7 @@ export function PatientRegisterPage() {
           email: form.tutorEmail || undefined,
           address: addressStr,
           insurance: form.tutorInsurance && form.tutorInsurance !== 'Nenhum' ? form.tutorInsurance : undefined,
+          alternateContacts: toTutorContactsPayload(alternateContacts),
         }
 
         try {
@@ -1099,6 +1123,17 @@ export function PatientRegisterPage() {
             </select>
           </div>
         </div>
+
+        <TutorAlternateContactsFields
+          idPrefix="register-tutor-contact"
+          contacts={alternateContacts}
+          errors={alternateContactErrors}
+          disabled={tutorMode === 'existing'}
+          onChange={(contacts) => {
+            setAlternateContacts(contacts)
+            setAlternateContactErrors([])
+          }}
+        />
 
         <p className="section-subtitle">Endereço</p>
 

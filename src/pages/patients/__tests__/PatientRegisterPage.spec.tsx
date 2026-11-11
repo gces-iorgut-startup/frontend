@@ -132,6 +132,12 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
     await user.type(screen.getByLabelText(/CPF:/i), '52998224725')
     await user.type(screen.getByLabelText(/Contato:/i), '11988887777')
 
+    await user.click(screen.getByRole('button', { name: /Adicionar contato/i }))
+    await user.type(screen.getByLabelText('Nome:'), 'João Silva')
+    await user.type(screen.getByLabelText('Telefone:'), '61999991111')
+    await user.type(screen.getByLabelText('Vínculo:'), 'Cônjuge')
+    await user.click(screen.getByLabelText(/Possui WhatsApp/i))
+
     await user.click(screen.getByRole('button', { name: /Finalizar cadastro/i }))
 
     await waitFor(() => {
@@ -141,6 +147,14 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
           fullName: 'Mariana Costa',
           cpf: '52998224725',
           phone: '11988887777',
+          alternateContacts: [
+            {
+              name: 'João Silva',
+              phone: '61999991111',
+              relationship: 'Cônjuge',
+              hasWhatsApp: true,
+            },
+          ],
         }),
       )
       expect(api.post).toHaveBeenCalledWith(

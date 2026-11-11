@@ -71,6 +71,13 @@ export interface RegisterVetRequest {
 }
 
 // ── Tutor ─────────────────────────────────────────
+export interface TutorAlternateContact {
+  name: string
+  phone: string
+  relationship: string
+  hasWhatsApp: boolean
+}
+
 export interface Tutor {
   id: string
   userId?: string | null
@@ -80,6 +87,7 @@ export interface Tutor {
   email?: string | null
   address?: string | null
   insurance?: string | null
+  alternateContacts?: TutorAlternateContact[] | null
   createdAt: string
   updatedAt: string
   patients?: Patient[]
@@ -92,6 +100,7 @@ export interface CreateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 export interface UpdateTutorRequest {
@@ -100,6 +109,7 @@ export interface UpdateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 // ── Patient ───────────────────────────────────────
