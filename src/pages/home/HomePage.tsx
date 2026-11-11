@@ -9,6 +9,7 @@ import {
   APPOINTMENT_CATEGORY_LABELS,
   HOME_AGENDA_CATEGORY_COLOR_CLASS,
 } from '../../lib/appointmentCategory'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 
 import type { Appointment, ClinicHistoryListItem } from '../../types'
 
@@ -143,7 +144,7 @@ export function HomePage() {
                   <div className="app-card-col">
                     <div className="app-info-row">
                       <span className="app-info-label">Espécie:</span>
-                      <span>{app.species}</span>
+                      <span>{getPatientSpeciesLabel(app.species)}</span>
                     </div>
                     <div className="app-info-row">
                       <span className="app-info-label">Atendimento:</span>
@@ -206,7 +207,7 @@ export function HomePage() {
                       </div>
                       <div className="timeline-info-row">
                         <span className="timeline-info-label">Espécie:</span>
-                        <span>{item.patient?.species || '—'}</span>
+                        <span>{getPatientSpeciesLabel(item.patient?.species)}</span>
                       </div>
                       <div className="timeline-info-row">
                          <span className="timeline-info-label">Veterinário:</span>
