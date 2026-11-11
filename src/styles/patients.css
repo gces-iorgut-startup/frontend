@@ -225,6 +225,24 @@
   font-size: 0.9375rem;
 }
 
+.patients-header-actions .search-bar {
+  position: relative;
+}
+
+.patient-search-error {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 2;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  color: var(--color-danger, #b42318);
+  background: var(--color-surface, #fff);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 /* Loading */
 .patients-loading {
   display: flex;

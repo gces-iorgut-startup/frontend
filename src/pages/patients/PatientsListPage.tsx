@@ -12,6 +12,8 @@ export function PatientsListPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [searchError, setSearchError] = useState('')
   
   const [showFilter, setShowFilter] = useState(false)
   const [filterSpecies, setFilterSpecies] = useState('')
@@ -27,7 +29,7 @@ export function PatientsListPage() {
     setLoading(true)
     try {
       const params: Record<string, string | number> = { page, perPage }
-      if (search.trim()) params.search = search.trim()
+      if (debouncedSearch) params.search = debouncedSearch
       if (activeSpecies) params.species = activeSpecies
       if (activeDate) params.updateDate = activeDate
       const response = await api.get('/patients', { params })
@@ -38,7 +40,19 @@ export function PatientsListPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, activeSpecies, activeDate])
+  }, [page, debouncedSearch, activeSpecies, activeDate])
+
+  useEffect(() => {
+    const normalizedSearch = search.trim()
+    if (normalizedSearch.length === 1) {
+      setSearchError('Digite pelo menos 2 caracteres para pesquisar.')
+      return
+    }
+
+    setSearchError('')
+    const timer = window.setTimeout(() => setDebouncedSearch(normalizedSearch), 350)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
   useEffect(() => {
     fetchPatients()
@@ -47,7 +61,7 @@ export function PatientsListPage() {
   // Reset page when search or filters change
   useEffect(() => {
     setPage(1)
-  }, [search, activeSpecies, activeDate])
+  }, [debouncedSearch, activeSpecies, activeDate])
 
   const applyFilters = () => {
     setActiveSpecies(filterSpecies)
@@ -116,10 +130,13 @@ export function PatientsListPage() {
             <input
               id="patient-search"
               type="text"
-              placeholder="Pesquisar"
+              placeholder="Buscar por paciente, tutor ou CPF"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-invalid={Boolean(searchError)}
+              aria-describedby={searchError ? 'patient-search-error' : undefined}
             />
+            {searchError && <span id="patient-search-error" className="patient-search-error">{searchError}</span>}
           </div>
           <div className="patients-filter-wrapper">
             <button
@@ -208,7 +225,11 @@ export function PatientsListPage() {
         </div>
       ) : patients.length === 0 ? (
         <div className="patients-empty">
-          <p>Nenhum paciente encontrado.</p>
+          <p>
+            {debouncedSearch
+              ? `Nenhum paciente encontrado para “${debouncedSearch}”.`
+              : 'Nenhum paciente encontrado.'}
+          </p>
         </div>
       ) : (
         <>
