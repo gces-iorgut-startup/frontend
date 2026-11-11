@@ -9,7 +9,9 @@ import {
   FileText,
   FileUp,
   KeyRound,
+  MessageCircle,
   PawPrint,
+  Phone,
   Stethoscope,
   User,
 } from 'lucide-react'
@@ -17,6 +19,7 @@ import { api } from '../../lib/api'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { examService } from '../../lib/examService'
+import { maskPhone } from '../../lib/documents'
 import {
   getPatientSexLabel,
   getPatientSpeciesLabel,
@@ -233,6 +236,7 @@ export function PatientDetailsPage() {
   }
 
   const address = extractAddress(patient.tutor?.address)
+  const alternateContacts = patient.tutor?.alternateContacts ?? []
   const visibleHistory = history.filter((item) => item.finalized)
 
   async function handleCreateTutorAccess() {
@@ -481,6 +485,32 @@ export function PatientDetailsPage() {
               <strong>{patient.tutor?.insurance || 'Não possui'}</strong>
             </div>
           </div>
+
+          {alternateContacts.length > 0 && (
+            <>
+              <h3 className="patient-details-subtitle">Contatos alternativos</h3>
+              <div className="patient-details-alternate-contacts">
+                {alternateContacts.map((contact, index) => (
+                  <div className="patient-details-alternate-contact" key={`${contact.phone}-${index}`}>
+                    <div className="patient-details-alternate-contact-heading">
+                      <strong>{contact.name}</strong>
+                      <span>{contact.relationship}</span>
+                    </div>
+                    <div className="patient-details-alternate-contact-info">
+                      <span>
+                        <Phone size={15} aria-hidden="true" />
+                        {maskPhone(contact.phone)}
+                      </span>
+                      <span>
+                        <MessageCircle size={15} aria-hidden="true" />
+                        {contact.hasWhatsApp ? 'WhatsApp disponível' : 'Sem WhatsApp'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <h3 className="patient-details-subtitle">Endereço</h3>
           <div className="patient-details-info-grid two-columns">
