@@ -155,12 +155,12 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
     const birthDateInput = await driver.findElement(By.id('birth-date'));
     await birthDateInput.sendKeys('15062020');
 
-    await registerPage.selectOption(By.id('species'), 'Cachorro');
+    await registerPage.selectOption(By.id('species'), 'Canino');
 
     const breedInput = await driver.findElement(By.id('breed'));
     await breedInput.sendKeys('Vira-lata');
     
-    const sexRadio = await driver.wait(until.elementLocated(By.css('input[name="sex"][value="Feminino"]')), 8000);
+    const sexRadio = await driver.wait(until.elementLocated(By.css('input[name="sex"][value="FEMALE"]')), 8000);
     await sexRadio.click();
 
     const microchipRadio = await driver.wait(until.elementLocated(By.css('input[name="microchip"][value="Não"]')), 8000);
@@ -410,7 +410,7 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
 
     await patientsList.openFilters();
     
-    await patientsList.selectSpeciesFilter('Cachorro');
+    await patientsList.selectSpeciesFilter('Canino');
     await patientsList.applyFilters();
     await new Promise((resolve) => setTimeout(resolve, 800));
 
@@ -537,6 +537,12 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
     await obsInput.clear();
     await obsInput.sendKeys('Paciente apresenta excelente recuperação pós-operatória. Retorno em 15 dias.');
 
+    const reproductiveCondition = await driver.findElement(By.id('reproductive-condition'));
+    await reproductiveCondition.sendKeys('Castrado');
+
+    const coatDescription = await driver.findElement(By.id('coat-description'));
+    await coatDescription.sendKeys('Pelagem caramelo e curta');
+
     const saveBtn = await driver.findElement(By.css('.register-submit-btn.patient-edit-submit'));
     await driver.executeScript("arguments[0].scrollIntoView({block: 'center'});", saveBtn);
     await saveBtn.click();
@@ -552,6 +558,8 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
 
     const bodyText = await driver.findElement(By.tagName('body')).getText();
     expect(bodyText).to.include('excelente recuperação pós-operatória');
+    expect(bodyText).to.include('Castrado');
+    expect(bodyText).to.include('Pelagem caramelo e curta');
   });
 
   it('Passo 9: Deve navegar para Histórico, testar filtros e abrir um atendimento histórico', async function () {
@@ -562,7 +570,7 @@ describe('Veterinarian Flow E2E - Continuous Journey', function () {
     await toggleFilterBtn.click();
 
     const selectSpecies = await driver.wait(until.elementLocated(By.css('#history-filter-species')), 8000);
-    await selectSpecies.sendKeys('Cachorro');
+    await selectSpecies.sendKeys('Canino');
 
     const applyFilterBtn = await driver.wait(until.elementLocated(By.css('.history-filter-actions button.primary')), 8000);
     await applyFilterBtn.click();

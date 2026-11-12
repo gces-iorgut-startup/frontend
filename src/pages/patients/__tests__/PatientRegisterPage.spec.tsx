@@ -121,14 +121,22 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
 
     await user.type(screen.getByLabelText(/Nome do Pet/i), 'Bolt')
     await user.type(screen.getByLabelText(/Data de nascimento/i), '10052022')
-    await user.selectOptions(screen.getByLabelText(/Espécie/i), 'Cachorro')
+    await user.selectOptions(screen.getByLabelText(/Espécie/i), 'CANINE')
     await user.type(screen.getByLabelText(/Raça/i), 'Golden')
-    await user.click(screen.getByLabelText('Masculino'))
+    await user.click(screen.getByLabelText('Indeterminado'))
+    await user.selectOptions(screen.getByLabelText(/Condição reprodutiva/i), 'NEUTERED')
+    await user.type(screen.getByLabelText(/Descrição da pelagem/i), 'Dourada e longa')
     await user.click(screen.getByLabelText('Não'))
 
     await user.type(screen.getByLabelText(/Nome completo/i), 'Mariana Costa')
     await user.type(screen.getByLabelText(/CPF:/i), '52998224725')
     await user.type(screen.getByLabelText(/Contato:/i), '11988887777')
+
+    await user.click(screen.getByRole('button', { name: /Adicionar contato/i }))
+    await user.type(screen.getByLabelText('Nome:'), 'João Silva')
+    await user.type(screen.getByLabelText('Telefone:'), '61999991111')
+    await user.type(screen.getByLabelText('Vínculo:'), 'Cônjuge')
+    await user.click(screen.getByLabelText(/Possui WhatsApp/i))
 
     await user.click(screen.getByRole('button', { name: /Finalizar cadastro/i }))
 
@@ -139,6 +147,14 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
           fullName: 'Mariana Costa',
           cpf: '52998224725',
           phone: '11988887777',
+          alternateContacts: [
+            {
+              name: 'João Silva',
+              phone: '61999991111',
+              relationship: 'Cônjuge',
+              hasWhatsApp: true,
+            },
+          ],
         }),
       )
       expect(api.post).toHaveBeenCalledWith(
@@ -146,8 +162,11 @@ describe('PatientRegisterPage — Formulários e Máscaras de Input (CPF, Telefo
         expect.objectContaining({
           name: 'Bolt',
           tutorId: 'tutor-123',
-          species: 'Cachorro',
+          species: 'CANINE',
           breed: 'Golden',
+          sex: 'UNDETERMINED',
+          reproductiveCondition: 'NEUTERED',
+          coatDescription: 'Dourada e longa',
         }),
       )
     })

@@ -181,6 +181,30 @@
   margin-bottom: var(--space-lg);
 }
 
+.care-appointment-type {
+  margin-bottom: var(--space-lg);
+  padding: 14px 16px;
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--pink-50);
+}
+
+.care-appointment-type span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.care-appointment-type h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
+
 .care-form-group label {
   display: block;
   margin-bottom: var(--space-sm);
@@ -188,17 +212,26 @@
   color: var(--gray-800);
 }
 
-.care-form-group textarea {
+.care-form-group textarea,
+.care-form-group input {
   width: 100%;
-  min-height: 118px;
   border: 1px solid var(--gray-300);
   border-radius: 12px;
   padding: 16px;
-  resize: vertical;
   font: inherit;
   color: var(--color-text);
   outline: none;
   transition: border-color var(--transition-fast);
+}
+
+.care-form-group textarea {
+  min-height: 118px;
+  resize: vertical;
+}
+
+/* Campo de peso: um número curto não precisa da largura toda do formulário. */
+.care-form-group input {
+  max-width: 220px;
 }
 
 .care-panel .care-column-main {
@@ -214,11 +247,13 @@
   overflow-y: auto;
 }
 
-.care-form-group textarea:focus {
+.care-form-group textarea:focus,
+.care-form-group input:focus {
   border-color: var(--pink-300);
 }
 
-.care-form-group textarea:disabled {
+.care-form-group textarea:disabled,
+.care-form-group input:disabled {
   background: var(--gray-50);
 }
 
@@ -665,6 +700,12 @@
 
   .care-form-group textarea {
     min-height: 104px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .care-form-group input {
+    max-width: 100%;
     padding: 14px;
     border-radius: 10px;
   }

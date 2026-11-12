@@ -29,6 +29,9 @@ const TIME_SLOTS = [
 ]
 
 const CATEGORY_OPTIONS: SelectOption[] = [
+  { label: 'Consulta geral', value: 'GENERAL' },
+  { label: 'Retorno', value: 'RETURN' },
+  { label: 'Avaliação cirúrgica', value: 'SURGICAL_EVALUATION' },
   { label: 'Consulta', value: 'OBSERVATION' },
   { label: 'Vacinação', value: 'VACCINATION' },
   { label: 'Exame', value: 'EXAM' },

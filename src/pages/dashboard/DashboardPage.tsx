@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, LoaderCircle, TrendingDown, TrendingUp, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Activity, BarChart3, CalendarDays, ChevronRight, Clock3, LoaderCircle, TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { DashboardService } from '../../services/dashboard.service'
-import type { AdminAppointmentsTrendPoint, AdminMetrics } from '../../types'
+import type { AdminAppointmentsTrendPoint, AdminMetrics, RecentActivities } from '../../types'
 import '../../styles/dashboard.css'
 
 type PeriodFilter = 'week' | 'month'
@@ -17,12 +18,23 @@ function formatDayLabel(dateString: string) {
   })
 }
 
+function formatActivityDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 export function DashboardPage() {
+  const navigate = useNavigate()
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('week')
   const [detailFilter, setDetailFilter] = useState<DetailFilter>('status')
   const [days, setDays] = useState(30)
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null)
   const [trend, setTrend] = useState<AdminAppointmentsTrendPoint[]>([])
+  const [recentActivities, setRecentActivities] = useState<RecentActivities>({
+    recentAppointments: [],
+    recentPatients: [],
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -34,15 +46,17 @@ export function DashboardPage() {
       setError('')
 
       try {
-        const [metricsResponse, trendResponse] = await Promise.all([
+        const [metricsResponse, trendResponse, activitiesResponse] = await Promise.all([
           DashboardService.getAdminMetrics(),
           DashboardService.getAdminAppointmentsTrend(days),
+          DashboardService.getRecentActivities(5),
         ])
 
         if (cancelled) return
 
         setMetrics(metricsResponse)
         setTrend(trendResponse.trend)
+        setRecentActivities(activitiesResponse)
       } catch {
         if (!cancelled) {
           setError('Nao foi possivel carregar os indicadores gerenciais.')
@@ -87,6 +101,23 @@ export function DashboardPage() {
   }, [periodMetrics])
 
   const periodLabel = periodFilter === 'week' ? 'semana' : 'mes'
+
+  const activityItems = useMemo(() => [
+    ...recentActivities.recentAppointments.map(activity => ({
+      key: `appointment-${activity.id}`,
+      title: `Atendimento de ${activity.patientName} alterado`,
+      detail: 'Atendimento alterado',
+      timestamp: activity.updatedAt,
+      onClick: () => navigate(`/atendimentos/${activity.id}/pacientes/${activity.patientId}`),
+    })),
+    ...recentActivities.recentPatients.map(activity => ({
+      key: `patient-${activity.id}`,
+      title: `${activity.name} cadastrado`,
+      detail: `Tutor: ${activity.tutorName}`,
+      timestamp: activity.createdAt,
+      onClick: () => navigate(`/pacientes/${activity.id}`),
+    })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [navigate, recentActivities])
 
   if (loading) {
     return (
@@ -251,6 +282,33 @@ export function DashboardPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </section>
+
+      <section className="dashboard-activity-card">
+        <div className="dashboard-activity-header">
+          <div>
+            <h2><Activity size={20} /> Atividades recentes</h2>
+            <p>Últimos pacientes cadastrados e atendimentos modificados.</p>
+          </div>
+        </div>
+
+        {activityItems.length === 0 ? (
+          <div className="dashboard-empty-state">Nenhuma atividade recente encontrada.</div>
+        ) : (
+          <div className="dashboard-activity-list">
+            {activityItems.map(item => (
+              <button key={item.key} type="button" className="dashboard-activity-item" onClick={item.onClick}>
+                <span className="dashboard-activity-icon"><Clock3 size={17} /></span>
+                <span className="dashboard-activity-content">
+                  <strong>{item.title}</strong>
+                  <span>{item.detail}</span>
+                </span>
+                <time dateTime={item.timestamp}>{formatActivityDate(item.timestamp)}</time>
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            ))}
           </div>
         )}
       </section>
