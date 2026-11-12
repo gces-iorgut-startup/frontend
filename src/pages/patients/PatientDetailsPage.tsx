@@ -304,6 +304,11 @@ export function PatientDetailsPage() {
       return
     }
 
+    if (!user.crmv) {
+      setStartCareError('Cadastre seu CRMV em Configurações para iniciar um atendimento.')
+      return
+    }
+
     const now = new Date()
     setIsStartingCare(true)
     setStartCareError('')
@@ -352,6 +357,11 @@ export function PatientDetailsPage() {
   async function handleOpenStartCare() {
     if (!patient || !user) {
       setStartCareError('Você precisa estar logado para iniciar o atendimento.')
+      return
+    }
+
+    if (!user.crmv) {
+      setStartCareError('Cadastre seu CRMV em Configurações para iniciar um atendimento.')
       return
     }
 
