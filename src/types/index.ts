@@ -354,6 +354,35 @@ export interface ExamFile {
   uploadedAt: string
 }
 
+// ── Chronic Conditions (CLI-02) ───────────────────
+export type ChronicConditionStatus = 'ACTIVE' | 'INACTIVE' | 'RESOLVED'
+
+export interface ChronicCondition {
+  id: string
+  patientId: string
+  name: string
+  diagnosedAt: string | null
+  status: ChronicConditionStatus
+  observations: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateChronicConditionRequest {
+  patientId: string
+  name: string
+  diagnosedAt?: string
+  status?: ChronicConditionStatus
+  observations?: string
+}
+
+export interface UpdateChronicConditionRequest {
+  name?: string
+  diagnosedAt?: string | null
+  status?: ChronicConditionStatus
+  observations?: string | null
+}
+
 // ── Patient Photos ────────────────────────────────
 export interface PatientPhoto {
   id: string
