@@ -3,6 +3,7 @@ import type { ClinicalRecord, UpdateClinicalRecordRequest } from '../types'
 const ROUTINE_GUIDANCE_META_PREFIX = '__IOUGURT_META__:'
 
 export interface CareFormValues {
+  weightKg: string
   clinicalNotes: string
   breathingNotes: string
   observations: string
@@ -61,6 +62,7 @@ export function getCareFormValues(record: ClinicalRecord): CareFormValues {
   const routineGuidance = parseRoutineGuidance(record.routineGuidance)
 
   return {
+    weightKg: record.weightKg == null ? '' : String(record.weightKg),
     clinicalNotes: record.clinicalNotes ?? '',
     breathingNotes: record.breathingNotes ?? '',
     observations: routineGuidance.observations,
@@ -71,8 +73,30 @@ export function getCareFormValues(record: ClinicalRecord): CareFormValues {
   }
 }
 
+/**
+ * Converte o peso digitado no número que o backend espera.
+ *
+ * Aceita vírgula além de ponto: o teclado numérico em pt-BR produz "12,5" e
+ * `Number('12,5')` é NaN. Devolve `null` quando não dá para aproveitar o
+ * valor, para o payload simplesmente omitir o campo.
+ */
+export function parseWeightKg(value: string): number | null {
+  const normalized = value.trim().replace(',', '.')
+  if (!normalized) return null
+
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+
+  return parsed
+}
+
 export function getClinicalRecordPayload(values: CareFormValues): UpdateClinicalRecordRequest {
+  const weightKg = parseWeightKg(values.weightKg)
+
   return {
+    // Omitimos a chave quando o peso não é aproveitável: mandar `undefined`
+    // num campo opcional faria o backend sobrescrever um peso já registrado.
+    ...(weightKg === null ? {} : { weightKg }),
     clinicalNotes: values.clinicalNotes.trim(),
     breathingNotes: values.breathingNotes.trim(),
     pendingDiagnosis: values.examRequests.trim(),
