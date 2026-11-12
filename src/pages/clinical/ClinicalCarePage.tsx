@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import {
   getCareFormValues,
   getClinicalRecordPayload,
@@ -41,6 +42,12 @@ const EMPTY_FORM: CareFormValues = {
 
 function getAppointmentCategoryLabel(category?: string | null) {
   switch (category) {
+    case 'GENERAL':
+      return 'Consulta geral'
+    case 'RETURN':
+      return 'Retorno'
+    case 'SURGICAL_EVALUATION':
+      return 'Avaliação cirúrgica'
     case 'VACCINATION':
       return 'Vacinação'
     case 'EXAM':
@@ -149,7 +156,7 @@ function buildHistorySummary(patient: Patient, history: ClinicalHistoryItem[], v
   const lastFinished = history.find((item) => item.finalized)
 
   return {
-    species: patient.species,
+    species: getPatientSpeciesLabel(patient.species),
     age: calculateAge(patient.birthDate),
     weight: formatWeight(patient.weightKg as string | number | null | undefined),
     vaccination: nextPending
@@ -201,6 +208,11 @@ export function ClinicalCarePage() {
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
   const [showExitModal, setShowExitModal] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const currentAppointmentCategory = useMemo(
+    () => history.find(item => item.appointmentId === appointmentId)?.appointment?.category,
+    [appointmentId, history],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -528,6 +540,11 @@ export function ClinicalCarePage() {
 
               {renderIougurtVetCard('care-side-card-mobile')}
 
+              <div className="care-appointment-type">
+                <span>Tipo de atendimento</span>
+                <h2>{getAppointmentCategoryLabel(currentAppointmentCategory)}</h2>
+              </div>
+
               <div className="care-form-group">
                 <label htmlFor="clinical-notes">Queixa principal</label>
                 <textarea
@@ -636,7 +653,7 @@ export function ClinicalCarePage() {
               <div className="care-info-row"><span>Peso atual:</span><strong>{formatWeight(patient.weightKg as string | number | null | undefined)}</strong></div>
               <div className="care-info-row"><span>Idade:</span><strong>{calculateAge(patient.birthDate)}</strong></div>
               <div className="care-info-row"><span>Microchip:</span><strong>{getMicrochipLabel(patient.microchip)}</strong></div>
-              <div className="care-info-row"><span>Espécie:</span><strong>{patient.species}</strong></div>
+              <div className="care-info-row"><span>Espécie:</span><strong>{getPatientSpeciesLabel(patient.species)}</strong></div>
               <div className="care-info-row"><span>Observações:</span><strong>{patient.observations || '—'}</strong></div>
               <div className="care-info-row"><span>Raça:</span><strong>{patient.breed || '—'}</strong></div>
             </div>

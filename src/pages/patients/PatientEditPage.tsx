@@ -5,18 +5,27 @@ import { api } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
 import { CepNotFoundError, CepRequestError, fetchAddressByCep } from '../../lib/cep'
-import type { Patient } from '../../types'
+import {
+  PATIENT_SEX_OPTIONS,
+  PATIENT_SPECIES_OPTIONS,
+  REPRODUCTIVE_CONDITION_OPTIONS,
+  normalizePatientSex,
+  normalizePatientSpecies,
+  normalizeReproductiveCondition,
+  type PatientSex,
+  type PatientSpecies,
+  type ReproductiveCondition,
+} from '../../lib/patientFields'
+import { TutorAlternateContactsFields } from '../../components/patients/TutorAlternateContactsFields'
+import {
+  hasTutorContactErrors,
+  normalizeTutorContacts,
+  toTutorContactsPayload,
+  validateTutorContacts,
+  type TutorAlternateContactErrors,
+} from '../../lib/tutorContacts'
+import type { Patient, TutorAlternateContact } from '../../types'
 import '../../styles/patients.css'
-
-const SPECIES_OPTIONS = [
-  'Cachorro',
-  'Gato',
-  'Pássaro',
-  'Roedor',
-  'Reptil',
-  'Peixe',
-  'Outro',
-]
 
 const INSURANCE_OPTIONS = [
   'Nenhum',
@@ -36,9 +45,11 @@ const STATES_BR = [
 interface EditFormData {
   petName: string
   birthDate: string
-  species: string
+  species: PatientSpecies | ''
   breed: string
-  sex: string
+  sex: PatientSex | ''
+  reproductiveCondition: ReproductiveCondition | ''
+  coatDescription: string
   weightKg: string
   hasMicrochip: string
   microchipNumber: string
@@ -64,6 +75,8 @@ const initialForm: EditFormData = {
   species: '',
   breed: '',
   sex: '',
+  reproductiveCondition: '',
+  coatDescription: '',
   weightKg: '',
   hasMicrochip: '',
   microchipNumber: '',
@@ -205,6 +218,8 @@ export function PatientEditPage() {
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showExitModal, setShowExitModal] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [alternateContacts, setAlternateContacts] = useState<TutorAlternateContact[]>([])
+  const [alternateContactErrors, setAlternateContactErrors] = useState<TutorAlternateContactErrors[]>([])
   const [isFetchingCep, setIsFetchingCep] = useState(false)
   const cepAbortRef = useRef<AbortController | null>(null)
   const addressNumberRef = useRef<HTMLInputElement | null>(null)
@@ -227,12 +242,16 @@ export function PatientEditPage() {
         const microchipNumber = rawMicrochip !== 'Sim' && rawMicrochip !== 'Não' ? rawMicrochip : ''
 
         setPatient(patientData)
+        setAlternateContacts(normalizeTutorContacts(patientData.tutor?.alternateContacts))
+        setAlternateContactErrors([])
         setForm({
           petName: patientData.name || '',
           birthDate: toDateInputBR(patientData.birthDate),
-          species: patientData.species || '',
+          species: normalizePatientSpecies(patientData.species),
           breed: patientData.breed || '',
-          sex: patientData.sex || '',
+          sex: normalizePatientSex(patientData.sex),
+          reproductiveCondition: normalizeReproductiveCondition(patientData.reproductiveCondition),
+          coatDescription: patientData.coatDescription || '',
           weightKg: patientData.weightKg ? `${patientData.weightKg} kg` : '',
           hasMicrochip,
           microchipNumber,
@@ -344,14 +363,11 @@ export function PatientEditPage() {
     const nextErrors: Partial<Record<keyof EditFormData, string>> = {}
 
     if (!form.petName.trim()) nextErrors.petName = 'Nome do pet e obrigatorio'
-    if (!form.birthDate || !isValidDateBR(form.birthDate)) nextErrors.birthDate = 'Data invalida'
+    if (form.birthDate && !isValidDateBR(form.birthDate)) nextErrors.birthDate = 'Data invalida'
     if (!form.species.trim()) nextErrors.species = 'Especie e obrigatoria'
-    if (!form.breed.trim()) nextErrors.breed = 'Raca e obrigatoria'
     if (!form.sex.trim()) nextErrors.sex = 'Sexo e obrigatorio'
 
-    if (!form.weightKg.trim()) {
-      nextErrors.weightKg = 'Peso e obrigatorio'
-    } else if (extractWeightNumber(form.weightKg) === null) {
+    if (form.weightKg.trim() && extractWeightNumber(form.weightKg) === null) {
       nextErrors.weightKg = 'Peso invalido'
     }
 
@@ -363,23 +379,32 @@ export function PatientEditPage() {
     if (!form.tutorFullName.trim()) nextErrors.tutorFullName = 'Nome do tutor e obrigatorio'
     if (!isValidCpf(form.tutorCpf)) nextErrors.tutorCpf = 'CPF invalido'
     if (form.tutorPhone.replace(/\D/g, '').length < 10) nextErrors.tutorPhone = 'Telefone invalido'
-    if (!form.tutorEmail.trim()) nextErrors.tutorEmail = 'Email e obrigatorio'
-    if (!form.tutorInsurance.trim()) nextErrors.tutorInsurance = 'Convenio e obrigatorio'
+    if (form.tutorEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.tutorEmail.trim())) {
+      nextErrors.tutorEmail = 'Email invalido'
+    }
 
-    if (!form.cep.trim()) nextErrors.cep = 'CEP e obrigatorio'
-    if (!form.state.trim()) nextErrors.state = 'Estado e obrigatorio'
-    if (!form.city.trim()) nextErrors.city = 'Cidade e obrigatoria'
-    if (!form.neighborhood.trim()) nextErrors.neighborhood = 'Bairro e obrigatorio'
-    if (!form.street.trim()) nextErrors.street = 'Logradouro e obrigatorio'
-    if (!form.addressNumber.trim()) nextErrors.addressNumber = 'Numero e obrigatorio'
+    const contactErrors = validateTutorContacts(alternateContacts)
+    setAlternateContactErrors(contactErrors)
 
     setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    return Object.keys(nextErrors).length === 0 && !hasTutorContactErrors(contactErrors)
+  }
+
+  function showValidationFeedback() {
+    showToast('Revise os campos destacados antes de salvar.', 'error')
+    window.setTimeout(() => {
+      const firstError = document.querySelector<HTMLElement>('.patient-edit-scroll .field-error')
+      firstError?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      firstError?.parentElement?.querySelector<HTMLElement>('input, select, textarea')?.focus()
+    }, 0)
   }
 
   async function performSave() {
     if (!id || !patient) return
-    if (!validate()) return
+    if (!validate()) {
+      showValidationFeedback()
+      return
+    }
 
     setSaving(true)
     try {
@@ -399,24 +424,31 @@ export function PatientEditPage() {
         ? (form.microchipNumber.trim() || 'Sim')
         : 'Não'
 
+      const tutorEmail = form.tutorEmail.trim()
+      const tutorInsurance = form.tutorInsurance.trim()
+      const tutorPayload = {
+        cpf: onlyDigits(form.tutorCpf),
+        fullName: form.tutorFullName.trim(),
+        phone: form.tutorPhone.replace(/\D/g, ''),
+        ...(tutorEmail ? { email: tutorEmail } : {}),
+        ...(tutorInsurance ? { insurance: tutorInsurance } : {}),
+        ...(address ? { address } : {}),
+        alternateContacts: toTutorContactsPayload(alternateContacts),
+      }
+
       await api.put(`/patients/${id}`, {
-        name: form.petName,
+        name: form.petName.trim(),
         species: form.species,
-        breed: form.breed,
+        breed: form.breed.trim() || undefined,
         birthDate: birthDateISO,
         sex: form.sex,
+        reproductiveCondition: form.reproductiveCondition || null,
+        coatDescription: form.coatDescription.trim() || null,
         weightKg: parsedWeight ?? undefined,
         observations: form.observations || undefined,
         microchip: microchipPayload,
         photoUrl: form.photoUrl || undefined,
-        tutor: {
-          cpf: onlyDigits(form.tutorCpf),
-          fullName: form.tutorFullName,
-          phone: form.tutorPhone.replace(/\D/g, ''),
-          email: form.tutorEmail,
-          insurance: form.tutorInsurance,
-          address,
-        },
+        tutor: tutorPayload,
       })
 
       showToast('Dados atualizados com sucesso!', 'success')
@@ -512,7 +544,7 @@ export function PatientEditPage() {
 
           <div className="form-group flex-1">
             <label className="register-label" htmlFor="birth-date">
-              Data de nascimento: <span className="required">*</span>
+              Data de nascimento:
             </label>
             <input
               id="birth-date"
@@ -533,10 +565,10 @@ export function PatientEditPage() {
             <label className="register-label" htmlFor="species">
               Especie: <span className="required">*</span>
             </label>
-            <select id="species" className="register-select" value={form.species} onChange={(e) => updateField('species', e.target.value)}>
+            <select id="species" className="register-select" value={form.species} onChange={(e) => updateField('species', e.target.value as PatientSpecies | '')}>
               <option value="">Selecionar</option>
-              {SPECIES_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
+              {PATIENT_SPECIES_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
             {errors.species && <span className="field-error">{errors.species}</span>}
@@ -546,7 +578,7 @@ export function PatientEditPage() {
         <div className="form-row patient-edit-row-5">
           <div className="form-group">
             <label className="register-label" htmlFor="breed">
-              Raca: <span className="required">*</span>
+              Raca:
             </label>
             <input id="breed" className="register-input" value={form.breed} onChange={(e) => updateField('breed', e.target.value)} />
             {errors.breed && <span className="field-error">{errors.breed}</span>}
@@ -554,7 +586,7 @@ export function PatientEditPage() {
 
           <div className="form-group">
             <label className="register-label" htmlFor="weight">
-              Peso atual: <span className="required">*</span>
+              Peso atual:
             </label>
             <input id="weight" className="register-input" value={form.weightKg} onChange={(e) => updateField('weightKg', e.target.value)} />
             {errors.weightKg && <span className="field-error">{errors.weightKg}</span>}
@@ -565,14 +597,18 @@ export function PatientEditPage() {
               Sexo: <span className="required">*</span>
             </label>
             <div className="radio-group">
-              <label className="radio-option">
-                <input type="radio" name="sex" value="Feminino" checked={form.sex === 'Feminino'} onChange={(e) => updateField('sex', e.target.value)} />
-                Feminino
-              </label>
-              <label className="radio-option">
-                <input type="radio" name="sex" value="Masculino" checked={form.sex === 'Masculino'} onChange={(e) => updateField('sex', e.target.value)} />
-                Masculino
-              </label>
+              {PATIENT_SEX_OPTIONS.map((option) => (
+                <label className="radio-option" key={option.value}>
+                  <input
+                    type="radio"
+                    name="sex"
+                    value={option.value}
+                    checked={form.sex === option.value}
+                    onChange={(e) => updateField('sex', e.target.value as PatientSex)}
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
             {errors.sex && <span className="field-error">{errors.sex}</span>}
           </div>
@@ -598,7 +634,7 @@ export function PatientEditPage() {
         <div className="form-row patient-edit-row-2">
           <div className="form-group">
             <label className="register-label" htmlFor="microchip-number">
-              Numero do microchip: <span className="required">*</span>
+              Numero do microchip: {form.hasMicrochip === 'Sim' && <span className="required">*</span>}
             </label>
             <input
               id="microchip-number"
@@ -613,6 +649,34 @@ export function PatientEditPage() {
           <div className="form-group">
             <label className="register-label" htmlFor="observations">Observacoes:</label>
             <input id="observations" className="register-input" value={form.observations} onChange={(e) => updateField('observations', e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-row patient-edit-row-2">
+          <div className="form-group">
+            <label className="register-label" htmlFor="reproductive-condition">Condição reprodutiva:</label>
+            <select
+              id="reproductive-condition"
+              className="register-select"
+              value={form.reproductiveCondition}
+              onChange={(e) => updateField('reproductiveCondition', e.target.value as ReproductiveCondition | '')}
+            >
+              <option value="">Não informado</option>
+              {REPRODUCTIVE_CONDITION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="register-label" htmlFor="coat-description">Descrição da pelagem:</label>
+            <input
+              id="coat-description"
+              className="register-input"
+              value={form.coatDescription}
+              maxLength={500}
+              onChange={(e) => updateField('coatDescription', e.target.value)}
+            />
           </div>
         </div>
 
@@ -643,7 +707,7 @@ export function PatientEditPage() {
           </div>
 
           <div className="form-group">
-            <label className="register-label" htmlFor="tutor-email">Email: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="tutor-email">Email:</label>
             <input id="tutor-email" type="email" className="register-input" value={form.tutorEmail} onChange={(e) => updateField('tutorEmail', e.target.value)} />
             {errors.tutorEmail && <span className="field-error">{errors.tutorEmail}</span>}
           </div>
@@ -651,7 +715,7 @@ export function PatientEditPage() {
 
         <div className="form-row form-row-4" style={{ marginBottom: 'var(--space-lg)' }}>
           <div className="form-group">
-            <label className="register-label" htmlFor="tutor-insurance">Convenio: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="tutor-insurance">Convenio:</label>
             <select id="tutor-insurance" className="register-select" value={form.tutorInsurance} onChange={(e) => updateField('tutorInsurance', e.target.value)}>
               <option value="">Selecionar</option>
               {INSURANCE_OPTIONS.map((option) => (
@@ -662,18 +726,28 @@ export function PatientEditPage() {
           </div>
         </div>
 
+        <TutorAlternateContactsFields
+          idPrefix="edit-tutor-contact"
+          contacts={alternateContacts}
+          errors={alternateContactErrors}
+          onChange={(contacts) => {
+            setAlternateContacts(contacts)
+            setAlternateContactErrors([])
+          }}
+        />
+
         <p className="section-subtitle">Endereco</p>
 
         <div className="form-row form-row-4">
           <div className="form-group">
-            <label className="register-label" htmlFor="cep">CEP: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="cep">CEP:</label>
             <input id="cep" className="register-input" value={form.cep} onChange={(e) => void handleCepChange(e.target.value)} maxLength={9} inputMode="numeric" />
             {isFetchingCep && <span className="field-hint">Buscando endereço…</span>}
             {errors.cep && <span className="field-error">{errors.cep}</span>}
           </div>
 
           <div className="form-group">
-            <label className="register-label" htmlFor="state">Estado: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="state">Estado:</label>
             <select id="state" className="register-select" value={form.state} onChange={(e) => updateField('state', e.target.value)}>
               <option value="">Selecionar</option>
               {STATES_BR.map((option) => (
@@ -684,13 +758,13 @@ export function PatientEditPage() {
           </div>
 
           <div className="form-group">
-            <label className="register-label" htmlFor="city">Cidade: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="city">Cidade:</label>
             <input id="city" className="register-input" value={form.city} onChange={(e) => updateField('city', e.target.value)} />
             {errors.city && <span className="field-error">{errors.city}</span>}
           </div>
 
           <div className="form-group">
-            <label className="register-label" htmlFor="neighborhood">Bairro: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="neighborhood">Bairro:</label>
             <input id="neighborhood" className="register-input" value={form.neighborhood} onChange={(e) => updateField('neighborhood', e.target.value)} />
             {errors.neighborhood && <span className="field-error">{errors.neighborhood}</span>}
           </div>
@@ -698,13 +772,13 @@ export function PatientEditPage() {
 
         <div className="form-row form-row-3">
           <div className="form-group">
-            <label className="register-label" htmlFor="street">Logradouro: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="street">Logradouro:</label>
             <input id="street" className="register-input" value={form.street} onChange={(e) => updateField('street', e.target.value)} />
             {errors.street && <span className="field-error">{errors.street}</span>}
           </div>
 
           <div className="form-group">
-            <label className="register-label" htmlFor="address-number">Numero: <span className="required">*</span></label>
+            <label className="register-label" htmlFor="address-number">Numero:</label>
             <input id="address-number" ref={addressNumberRef} className="register-input" value={form.addressNumber} onChange={(e) => updateField('addressNumber', e.target.value)} />
             {errors.addressNumber && <span className="field-error">{errors.addressNumber}</span>}
           </div>

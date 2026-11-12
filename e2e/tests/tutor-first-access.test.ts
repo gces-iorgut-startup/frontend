@@ -43,7 +43,7 @@ describe('Tutor Primeiro Acesso E2E', function () {
       phone: '61999887766',
       email,
     });
-    await createPatient(ctx, owner, tutor.id, 'Bolinha Acesso', 'Cachorro');
+    await createPatient(ctx, owner, tutor.id, 'Bolinha Acesso', 'CANINE');
     await createPendingTutorAccount(owner, tutor.id, email);
     token = await getFirstAccessToken(email);
 

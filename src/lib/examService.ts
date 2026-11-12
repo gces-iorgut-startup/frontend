@@ -1,4 +1,5 @@
 import { api } from './api'
+import { resolveUploadUrl } from './uploadUrl'
 import type { ExamFile } from '../types'
 
 export const examService = {
@@ -39,16 +40,7 @@ export const examService = {
   },
 
   resolveExamFileUrl(fileUrl: string): string {
-    if (!fileUrl) return ''
-    if (/^https?:\/\//i.test(fileUrl)) return fileUrl
-    const normalizedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`
-    const baseUrl = api.defaults.baseURL ?? ''
-    // External API (prod): build URL against the backend origin directly.
-    // Same-origin proxy (local/docker): route through /api so nginx forwards to the backend.
-    if (/^https?:\/\//i.test(baseUrl)) {
-      return baseUrl.replace(/\/+$/, '') + normalizedPath
-    }
-    return `/api${normalizedPath}`
+    return resolveUploadUrl(fileUrl)
   },
 
   downloadExamFile(fileUrl: string, fileName: string): void {
