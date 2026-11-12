@@ -14,6 +14,13 @@ export const AppointmentsService = {
     return response.data.appointments
   },
 
+  async listInProgress(): Promise<Appointment[]> {
+    const response = await api.get<{ appointments: Appointment[] }>('/appointments', {
+      params: { status: 'IN_PROGRESS' },
+    })
+    return response.data.appointments
+  },
+
   async create(data: CreateAppointmentRequest): Promise<Appointment> {
     const response = await api.post<{ appointment: Appointment }>('/appointments', data)
     return response.data.appointment

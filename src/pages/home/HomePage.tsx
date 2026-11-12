@@ -14,6 +14,9 @@ import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import type { Appointment, ClinicHistoryListItem } from '../../types'
 
 const CATEGORY_COLORS_APP: Record<string, string> = {
+  GENERAL: 'appointment-card--yellow',
+  RETURN: 'appointment-card--cyan',
+  SURGICAL_EVALUATION: 'appointment-card--pink',
   VACCINATION: 'appointment-card--cyan',
   OBSERVATION: 'appointment-card--yellow',
   EXAM: 'appointment-card--purple',
