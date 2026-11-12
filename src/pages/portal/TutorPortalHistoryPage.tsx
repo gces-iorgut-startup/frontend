@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRightToLine, Calendar, Filter, Search } from 'lucide-react'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { portalService } from '../../lib/portalService'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import type { Patient, TutorPortalClinicalRecord } from '../../types'
 import '../../styles/history.css'
 
@@ -137,7 +138,7 @@ export function TutorPortalHistoryPage() {
         !normalizedSearch ||
         item.patientName.toLowerCase().includes(normalizedSearch) ||
         item.tutorName.toLowerCase().includes(normalizedSearch) ||
-        item.species.toLowerCase().includes(normalizedSearch) ||
+        getPatientSpeciesLabel(item.species).toLowerCase().includes(normalizedSearch) ||
         item.vetName.toLowerCase().includes(normalizedSearch)
 
       const matchesSpecies = !appliedSpecies || item.species === appliedSpecies
@@ -222,7 +223,7 @@ export function TutorPortalHistoryPage() {
                         <td>{item.patientName}</td>
                         <td>{item.tutorName}</td>
                         <td>{formatDate(item.date)}</td>
-                        <td>{item.species}</td>
+                        <td>{getPatientSpeciesLabel(item.species)}</td>
                         <td>{item.vetName}</td>
                         <td>
                           <button
@@ -330,7 +331,7 @@ export function TutorPortalHistoryPage() {
                   <option value="">Selecionar</option>
                   {speciesOptions.map((species) => (
                     <option key={species} value={species}>
-                      {species}
+                      {getPatientSpeciesLabel(species)}
                     </option>
                   ))}
                 </select>

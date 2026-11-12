@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { ClipboardPlus } from 'lucide-react'
 import { ScheduleModal } from '../../components/scheduling/ScheduleModal'
 import {
+  APPOINTMENT_CATEGORY_OPTIONS,
   APPOINTMENT_CATEGORY_LABELS,
   HOME_AGENDA_CATEGORY_COLOR_CLASS,
 } from '../../lib/appointmentCategory'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import { useAgendaStore } from '../../stores/useAgendaStore'
-import type { Appointment } from '../../types'
+import type { Appointment, AppointmentCategory, AppointmentStatus } from '../../types'
 import '../../styles/agenda.css'
 
 const START_HOUR = 7
@@ -128,6 +130,21 @@ function getAppointmentColorClass(appointment: Appointment): string {
   return HOME_AGENDA_CATEGORY_COLOR_CLASS[appointment.category] ?? 'category-gray'
 }
 
+const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  SCHEDULED: 'Agendado',
+  IN_PROGRESS: 'Em atendimento',
+  COMPLETED: 'Finalizado',
+  CANCELLED: 'Cancelado',
+}
+
+function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
+  return (
+    <span className={`agenda-status-badge status-${status.toLowerCase().replace('_', '-')}`}>
+      {APPOINTMENT_STATUS_LABELS[status]}
+    </span>
+  )
+}
+
 function shiftDate(isoDate: string, days: number): string {
   const d = new Date(isoDate + 'T12:00:00')
   d.setDate(d.getDate() + days)
@@ -170,6 +187,7 @@ function MobileCardList({
                 {APPOINTMENT_CATEGORY_LABELS[appt.category] ?? appt.category}
                 {appt.vet?.name ? ` · ${appt.vet.name}` : ''}
               </span>
+              <AppointmentStatusBadge status={appt.status} />
             </div>
           </button>
         )
@@ -207,15 +225,17 @@ export function AgendaPage() {
   const rowH = isMobile ? ROW_MOBILE : ROW_DESKTOP
 
   // Sub-modal state
-  const [modalView, setModalView] = useState<'actions' | 'cancel' | 'reschedule'>('actions')
+  const [modalView, setModalView] = useState<'actions' | 'cancel' | 'reschedule' | 'edit'>('actions')
   const [cancelReason, setCancelReason] = useState('')
   const [rescheduleDate, setRescheduleDate] = useState('')
   const [rescheduleStart, setRescheduleStart] = useState('')
   const [rescheduleEnd, setRescheduleEnd] = useState('')
+  const [editCategory, setEditCategory] = useState<AppointmentCategory>('GENERAL')
+  const [editObservation, setEditObservation] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
 
-  const { selectedDate, appointments, isLoading, setDate, fetchAppointments, cancelAppointment, rescheduleAppointment } =
+  const { selectedDate, appointments, isLoading, setDate, fetchAppointments, cancelAppointment, rescheduleAppointment, updateAppointment } =
     useAgendaStore()
 
   useEffect(() => {
@@ -229,6 +249,8 @@ export function AgendaPage() {
     setRescheduleDate('')
     setRescheduleStart('')
     setRescheduleEnd('')
+    setEditCategory('GENERAL')
+    setEditObservation('')
     setActionLoading(false)
     setActionError('')
   }
@@ -270,6 +292,38 @@ export function AgendaPage() {
     setRescheduleEnd(defaultEnd)
     setModalView('reschedule')
     setActionError('')
+  }
+
+  const handleOpenEdit = () => {
+    if (!selectedAppointment) return
+    if (selectedAppointment.status !== 'SCHEDULED') {
+      setActionError('Somente atendimentos agendados podem ser editados.')
+      return
+    }
+
+    setEditCategory(selectedAppointment.category)
+    setEditObservation(selectedAppointment.observation ?? '')
+    setModalView('edit')
+    setActionError('')
+  }
+
+  const handleConfirmEdit = async () => {
+    if (!selectedAppointment) return
+
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await updateAppointment(selectedAppointment.id, {
+        category: editCategory,
+        observation: editObservation.trim() || null,
+      })
+      resetModalState()
+      showSuccessToast('Atendimento atualizado com sucesso')
+    } catch (err: unknown) {
+      setActionError(getActionErrorMessage(err, 'Erro ao editar atendimento.'))
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const handleConfirmCancel = async () => {
@@ -444,7 +498,11 @@ export function AgendaPage() {
                       </div>
                       <div className="detail-line">
                         <span className="detail-label">Espécie:</span>
-                        <span className="detail-value">{appt.patient?.species ?? '—'}</span>
+                        <span className="detail-value">{getPatientSpeciesLabel(appt.patient?.species)}</span>
+                      </div>
+                      <div className="detail-line">
+                        <span className="detail-label">Status:</span>
+                        <AppointmentStatusBadge status={appt.status} />
                       </div>
                     </div>
                   </div>
@@ -495,10 +553,21 @@ export function AgendaPage() {
                   {' · '}
                   {formatTimeRange(selectedAppointment.dateTime, selectedAppointment.endDateTime)}
                 </p>
+                <div className="agenda-detail-status">
+                  <AppointmentStatusBadge status={selectedAppointment.status} />
+                </div>
 
                 <div className="agenda-action-buttons">
                   <button type="button" className="agenda-action-btn agenda-action-atender" onClick={handleStartCare}>
                     Iniciar Atendimento
+                  </button>
+                  <button
+                    type="button"
+                    className="agenda-action-btn agenda-action-editar"
+                    onClick={handleOpenEdit}
+                    disabled={selectedAppointment.status !== 'SCHEDULED'}
+                  >
+                    Editar Atendimento
                   </button>
                   <button
                     type="button"
@@ -534,6 +603,51 @@ export function AgendaPage() {
                 <button type="button" className="agenda-action-fechar" onClick={resetModalState}>
                   Fechar
                 </button>
+              </>
+            )}
+
+            {modalView === 'edit' && (
+              <>
+                <h2>Editar Atendimento</h2>
+                <p className="agenda-detail-sub">{selectedAppointment.patient?.name}</p>
+
+                <div className="agenda-form-group">
+                  <label className="agenda-form-label" htmlFor="edit-appointment-category">Tipo de atendimento</label>
+                  <select
+                    id="edit-appointment-category"
+                    className="agenda-form-input"
+                    value={editCategory}
+                    onChange={(event) => setEditCategory(event.target.value as AppointmentCategory)}
+                  >
+                    {APPOINTMENT_CATEGORY_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="agenda-form-group">
+                  <label className="agenda-form-label" htmlFor="edit-appointment-observation">Observação</label>
+                  <textarea
+                    id="edit-appointment-observation"
+                    className="agenda-form-textarea"
+                    value={editObservation}
+                    onChange={(event) => setEditObservation(event.target.value)}
+                    maxLength={2000}
+                    rows={4}
+                    placeholder="Adicione uma observação opcional"
+                  />
+                </div>
+
+                {actionError && <span className="agenda-form-error">{actionError}</span>}
+
+                <div className="agenda-confirm-actions">
+                  <button type="button" className="ghost" onClick={() => setModalView('actions')} disabled={actionLoading}>
+                    Voltar
+                  </button>
+                  <button type="button" className="primary" onClick={handleConfirmEdit} disabled={actionLoading}>
+                    {actionLoading ? 'Salvando…' : 'Salvar Alterações'}
+                  </button>
+                </div>
               </>
             )}
 

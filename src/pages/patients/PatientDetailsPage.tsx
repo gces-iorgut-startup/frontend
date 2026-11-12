@@ -9,7 +9,9 @@ import {
   FileText,
   FileUp,
   KeyRound,
+  MessageCircle,
   PawPrint,
+  Phone,
   Stethoscope,
   User,
 } from 'lucide-react'
@@ -17,6 +19,13 @@ import { api } from '../../lib/api'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { examService } from '../../lib/examService'
+import { maskPhone } from '../../lib/documents'
+import { APPOINTMENT_CATEGORY_OPTIONS } from '../../lib/appointmentCategory'
+import {
+  getPatientSexLabel,
+  getPatientSpeciesLabel,
+  getReproductiveConditionLabel,
+} from '../../lib/patientFields'
 import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
@@ -24,6 +33,7 @@ import { UploadExamModal } from '../../components/UploadExamModal'
 import { VaccinationSection } from '../../components/VaccinationSection'
 import type {
   Appointment,
+  AppointmentCategory,
   ClinicalHistoryItem,
   CreateTutorAccountResponse,
   ExamFile,
@@ -36,6 +46,12 @@ const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
   switch (category) {
+    case 'GENERAL':
+      return 'Consulta geral'
+    case 'RETURN':
+      return 'Retorno'
+    case 'SURGICAL_EVALUATION':
+      return 'Avaliação cirúrgica'
     case 'VACCINATION':
       return 'Vacinação'
     case 'EXAM':
@@ -146,7 +162,8 @@ function isCompatibleAppointment(
   now: Date,
 ) {
   if (appointment.patientId !== patientId || appointment.vetId !== vetId) return false
-  if (appointment.status !== 'SCHEDULED' && appointment.status !== 'IN_PROGRESS') return false
+  if (appointment.status === 'IN_PROGRESS') return true
+  if (appointment.status !== 'SCHEDULED') return false
 
   const appointmentTime = new Date(appointment.dateTime).getTime()
   if (Number.isNaN(appointmentTime)) return false
@@ -175,6 +192,7 @@ export function PatientDetailsPage() {
   const [isStartingCare, setIsStartingCare] = useState(false)
   const [startCareError, setStartCareError] = useState('')
   const [showStartCareModal, setShowStartCareModal] = useState(false)
+  const [startCareCategory, setStartCareCategory] = useState<AppointmentCategory>('GENERAL')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showTutorAccessModal, setShowTutorAccessModal] = useState(false)
   const [tutorAccessEmail, setTutorAccessEmail] = useState('')
@@ -229,6 +247,7 @@ export function PatientDetailsPage() {
   }
 
   const address = extractAddress(patient.tutor?.address)
+  const alternateContacts = patient.tutor?.alternateContacts ?? []
   const visibleHistory = history.filter((item) => item.finalized)
 
   async function handleCreateTutorAccess() {
@@ -279,7 +298,14 @@ export function PatientDetailsPage() {
     setStartCareError('')
 
     try {
-      const appointments = await AppointmentsService.listByDay(getTodayISO(), user.id)
+      const [todayAppointments, inProgressAppointments] = await Promise.all([
+        AppointmentsService.listByDay(getTodayISO(), user.id),
+        AppointmentsService.listInProgress(),
+      ])
+      const appointments = [
+        ...inProgressAppointments,
+        ...todayAppointments.filter(today => !inProgressAppointments.some(active => active.id === today.id)),
+      ]
       const existingAppointment = appointments
         .filter((appointment) => isCompatibleAppointment(appointment, patient.id, user.id, now))
         .sort((a, b) => compareAppointmentsByPriority(a, b, now))[0]
@@ -293,7 +319,7 @@ export function PatientDetailsPage() {
         patientId: patient.id,
         vetId: user.id,
         dateTime: now.toISOString(),
-        category: 'OBSERVATION',
+        category: startCareCategory,
         observation: 'Atendimento iniciado pela pagina do paciente.',
       })
 
@@ -312,6 +338,41 @@ export function PatientDetailsPage() {
     }
   }
 
+  async function handleOpenStartCare() {
+    if (!patient || !user) {
+      setStartCareError('Você precisa estar logado para iniciar o atendimento.')
+      return
+    }
+
+    setIsStartingCare(true)
+    setStartCareError('')
+    try {
+      const now = new Date()
+      const [todayAppointments, inProgressAppointments] = await Promise.all([
+        AppointmentsService.listByDay(getTodayISO(), user.id),
+        AppointmentsService.listInProgress(),
+      ])
+      const appointments = [
+        ...inProgressAppointments,
+        ...todayAppointments.filter(today => !inProgressAppointments.some(active => active.id === today.id)),
+      ]
+      const activeAppointment = appointments
+        .filter((appointment) => isCompatibleAppointment(appointment, patient.id, user.id, now))
+        .sort((a, b) => compareAppointmentsByPriority(a, b, now))[0]
+
+      if (activeAppointment) {
+        navigate(`/atendimentos/${activeAppointment.id}/pacientes/${patient.id}`)
+        return
+      }
+
+      setShowStartCareModal(true)
+    } catch {
+      setStartCareError('Não foi possível verificar os atendimentos em andamento.')
+    } finally {
+      setIsStartingCare(false)
+    }
+  }
+
   return (
     <div className="patient-details-page">
       <div className="patient-details-topbar">
@@ -323,7 +384,7 @@ export function PatientDetailsPage() {
         <div className="patient-details-actions">
           <button
             type="button"
-            onClick={() => setShowStartCareModal(true)}
+            onClick={() => void handleOpenStartCare()}
             disabled={isStartingCare}
           >
             <Stethoscope size={18} />
@@ -392,7 +453,7 @@ export function PatientDetailsPage() {
               </div>
               <div className="patient-details-info-row">
                 <span>Sexo:</span>
-                <strong>{patient.sex || '—'}</strong>
+                <strong>{getPatientSexLabel(patient.sex)}</strong>
               </div>
               <div className="patient-details-info-row">
                 <span>Data de nascimento:</span>
@@ -412,7 +473,7 @@ export function PatientDetailsPage() {
               </div>
               <div className="patient-details-info-row">
                 <span>Espécie:</span>
-                <strong>{patient.species}</strong>
+                <strong>{getPatientSpeciesLabel(patient.species)}</strong>
               </div>
               <div className="patient-details-info-row">
                 <span>Observações:</span>
@@ -421,6 +482,14 @@ export function PatientDetailsPage() {
               <div className="patient-details-info-row">
                 <span>Raça:</span>
                 <strong>{patient.breed || '—'}</strong>
+              </div>
+              <div className="patient-details-info-row">
+                <span>Condição reprodutiva:</span>
+                <strong>{getReproductiveConditionLabel(patient.reproductiveCondition)}</strong>
+              </div>
+              <div className="patient-details-info-row">
+                <span>Pelagem:</span>
+                <strong>{patient.coatDescription || '—'}</strong>
               </div>
             </div>
           </div>
@@ -476,6 +545,32 @@ export function PatientDetailsPage() {
               <strong>{patient.tutor?.insurance || 'Não possui'}</strong>
             </div>
           </div>
+
+          {alternateContacts.length > 0 && (
+            <>
+              <h3 className="patient-details-subtitle">Contatos alternativos</h3>
+              <div className="patient-details-alternate-contacts">
+                {alternateContacts.map((contact, index) => (
+                  <div className="patient-details-alternate-contact" key={`${contact.phone}-${index}`}>
+                    <div className="patient-details-alternate-contact-heading">
+                      <strong>{contact.name}</strong>
+                      <span>{contact.relationship}</span>
+                    </div>
+                    <div className="patient-details-alternate-contact-info">
+                      <span>
+                        <Phone size={15} aria-hidden="true" />
+                        {maskPhone(contact.phone)}
+                      </span>
+                      <span>
+                        <MessageCircle size={15} aria-hidden="true" />
+                        {contact.hasWhatsApp ? 'WhatsApp disponível' : 'Sem WhatsApp'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <h3 className="patient-details-subtitle">Endereço</h3>
           <div className="patient-details-info-grid two-columns">
@@ -634,7 +729,20 @@ export function PatientDetailsPage() {
           <div className="patient-edit-modal">
             <ClipboardPlus className="patient-edit-modal-icon save" />
             <h3>Realizar atendimento</h3>
-            <p>Deseja iniciar um atendimento?</p>
+            <p>Confirme o tipo antes de iniciar o atendimento.</p>
+
+            <label className="register-label" htmlFor="start-care-category">Tipo de atendimento</label>
+            <select
+              id="start-care-category"
+              className="register-select"
+              value={startCareCategory}
+              onChange={(event) => setStartCareCategory(event.target.value as AppointmentCategory)}
+              disabled={isStartingCare}
+            >
+              {APPOINTMENT_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
 
             <div className="patient-edit-modal-actions">
               <button

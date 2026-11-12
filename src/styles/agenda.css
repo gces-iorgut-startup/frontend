@@ -472,6 +472,52 @@
   border: 1px solid var(--gray-300);
 }
 
+.agenda-action-editar {
+  background: var(--pink-50);
+  color: var(--pink-600);
+  border: 1px solid var(--pink-300);
+}
+
+.agenda-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.agenda-status-badge.status-scheduled {
+  background: #fff7d6;
+  color: #8a6500;
+}
+
+.agenda-status-badge.status-in-progress {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.agenda-status-badge.status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.agenda-status-badge.status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.agenda-detail-status {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 .agenda-action-cancelar {
   background: transparent;
   color: #e53e3e;

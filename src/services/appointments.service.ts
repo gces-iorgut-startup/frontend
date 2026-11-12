@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Appointment, CreateAppointmentRequest } from '../types'
+import type { Appointment, CreateAppointmentRequest, UpdateAppointmentRequest } from '../types'
 
 interface RescheduleAppointmentRequest {
   dateTime: string
@@ -10,6 +10,13 @@ export const AppointmentsService = {
   async listByDay(date: string, vetId?: string): Promise<Appointment[]> {
     const response = await api.get<{ appointments: Appointment[] }>('/appointments', {
       params: { date, vetId },
+    })
+    return response.data.appointments
+  },
+
+  async listInProgress(): Promise<Appointment[]> {
+    const response = await api.get<{ appointments: Appointment[] }>('/appointments', {
+      params: { status: 'IN_PROGRESS' },
     })
     return response.data.appointments
   },
@@ -28,6 +35,11 @@ export const AppointmentsService = {
 
   async reschedule(id: string, data: RescheduleAppointmentRequest): Promise<Appointment> {
     const response = await api.patch<Appointment>(`/appointments/${id}/reschedule`, data)
+    return response.data
+  },
+
+  async update(id: string, data: UpdateAppointmentRequest): Promise<Appointment> {
+    const response = await api.patch<Appointment>(`/appointments/${id}`, data)
     return response.data
   },
 }
