@@ -2,22 +2,28 @@ import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Save, PawPrint, User, Plus } from 'lucide-react'
 import { api } from '../../lib/api'
-import { getErrorMessage } from '../../lib/errorMessage'
+import { getErrorMessage, getValidationIssues } from '../../lib/errorMessage'
 import { isValidCpf, maskCep, maskCpf, maskDate, maskPhone, onlyDigits } from '../../lib/documents'
 import { CepNotFoundError, CepRequestError, fetchAddressByCep } from '../../lib/cep'
+import {
+  PATIENT_SEX_OPTIONS,
+  PATIENT_SPECIES_OPTIONS,
+  REPRODUCTIVE_CONDITION_OPTIONS,
+  type PatientSex,
+  type PatientSpecies,
+  type ReproductiveCondition,
+} from '../../lib/patientFields'
 import { TutorsService } from '../../services/tutors.service'
-import type { Tutor } from '../../types'
+import { TutorAlternateContactsFields } from '../../components/patients/TutorAlternateContactsFields'
+import {
+  hasTutorContactErrors,
+  normalizeTutorContacts,
+  toTutorContactsPayload,
+  validateTutorContacts,
+  type TutorAlternateContactErrors,
+} from '../../lib/tutorContacts'
+import type { CreatePatientRequest, Tutor, TutorAlternateContact } from '../../types'
 import '../../styles/patients.css'
-
-const SPECIES_OPTIONS = [
-  'Cachorro',
-  'Gato',
-  'Pássaro',
-  'Roedor',
-  'Réptil',
-  'Peixe',
-  'Outro',
-]
 
 const INSURANCE_OPTIONS = [
   'Nenhum',
@@ -39,9 +45,11 @@ interface FormData {
   // Patient
   petName: string
   birthDate: string
-  species: string
+  species: PatientSpecies | ''
   breed: string
-  sex: string
+  sex: PatientSex | ''
+  reproductiveCondition: ReproductiveCondition | ''
+  coatDescription: string
   weightKg: string
   hasMicrochip: string
   microchipNumber: string
@@ -69,6 +77,8 @@ const initialForm: FormData = {
   species: '',
   breed: '',
   sex: '',
+  reproductiveCondition: '',
+  coatDescription: '',
   weightKg: '',
   hasMicrochip: '',
   microchipNumber: '',
@@ -211,6 +221,8 @@ export function PatientRegisterPage() {
   const [selectedTutorId, setSelectedTutorId] = useState('')
   const [searchingTutor, setSearchingTutor] = useState(false)
   const [tutorSelectionError, setTutorSelectionError] = useState('')
+  const [alternateContacts, setAlternateContacts] = useState<TutorAlternateContact[]>([])
+  const [alternateContactErrors, setAlternateContactErrors] = useState<TutorAlternateContactErrors[]>([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
@@ -268,6 +280,9 @@ export function PatientRegisterPage() {
           : err instanceof CepRequestError
             ? 'Não foi possível buscar o CEP. Preencha manualmente.'
             : 'Erro ao buscar CEP.'
+      if (err instanceof CepNotFoundError) {
+        setForm((prev) => ({ ...prev, state: '', city: '', neighborhood: '', street: '' }))
+      }
       setErrors((prev) => ({ ...prev, cep: message }))
     } finally {
       if (cepAbortRef.current === controller) {
@@ -298,6 +313,8 @@ export function PatientRegisterPage() {
   }
 
   function clearTutorFields() {
+    setAlternateContacts([])
+    setAlternateContactErrors([])
     setForm((prev) => ({
       ...prev,
       tutorFullName: '',
@@ -419,6 +436,8 @@ export function PatientRegisterPage() {
     if (!tutor) return
 
     const address = extractAddressFields(tutor.address)
+    setAlternateContacts(normalizeTutorContacts(tutor.alternateContacts))
+    setAlternateContactErrors([])
     setForm((prev) => ({
       ...prev,
       tutorFullName: tutor.fullName,
@@ -484,6 +503,29 @@ export function PatientRegisterPage() {
       if (!form.tutorFullName.trim()) newErrors.tutorFullName = 'Nome do tutor é obrigatório'
       if (!form.tutorCpf || !isValidCpf(form.tutorCpf)) newErrors.tutorCpf = 'CPF inválido'
       if (!form.tutorPhone || form.tutorPhone.replace(/\D/g, '').length < 10) newErrors.tutorPhone = 'Telefone inválido'
+
+      const email = form.tutorEmail.trim()
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.tutorEmail = 'E-mail inválido'
+      }
+
+      const cepDigits = form.cep.replace(/\D/g, '')
+      if (cepDigits && cepDigits.length !== 8) {
+        newErrors.cep = 'CEP incompleto'
+      } else if (isFetchingCep) {
+        newErrors.cep = 'Aguarde a busca do CEP'
+      } else if (errors.cep === 'CEP não encontrado') {
+        newErrors.cep = errors.cep
+      }
+
+      const contactErrors = validateTutorContacts(alternateContacts)
+      setAlternateContactErrors(contactErrors)
+      if (hasTutorContactErrors(contactErrors)) {
+        setErrors(newErrors)
+        return false
+      }
+    } else {
+      setAlternateContactErrors([])
     }
 
     setErrors(newErrors)
@@ -528,6 +570,7 @@ export function PatientRegisterPage() {
           email: form.tutorEmail || undefined,
           address: addressStr,
           insurance: form.tutorInsurance && form.tutorInsurance !== 'Nenhum' ? form.tutorInsurance : undefined,
+          alternateContacts: toTutorContactsPayload(alternateContacts),
         }
 
         try {
@@ -552,13 +595,15 @@ export function PatientRegisterPage() {
       const birthDateISO = parseDateBR(form.birthDate)
       const microchipValue = form.microchipNumber.trim()
       const parsedWeight = extractWeightNumber(form.weightKg)
-      const patientPayload = {
+      const patientPayload: CreatePatientRequest = {
         name: form.petName,
         tutorId,
-        species: form.species,
+        species: form.species as PatientSpecies,
         breed: form.breed || undefined,
         birthDate: birthDateISO,
-        sex: form.sex || undefined,
+        sex: form.sex as PatientSex,
+        reproductiveCondition: form.reproductiveCondition || undefined,
+        coatDescription: form.coatDescription.trim() || undefined,
         weightKg: parsedWeight ?? undefined,
         observations: form.observations || undefined,
         microchip: form.hasMicrochip === 'Sim' ? (microchipValue || 'Sim') : undefined,
@@ -570,6 +615,21 @@ export function PatientRegisterPage() {
       showToast('Paciente cadastrado com sucesso!', 'success')
       setTimeout(() => navigate('/pacientes'), 1500)
     } catch (err: unknown) {
+      const issues = getValidationIssues(err)
+      if (issues) {
+        const fieldMap: Record<string, keyof FormData> = {
+          fullName: 'tutorFullName',
+          cpf: 'tutorCpf',
+          phone: 'tutorPhone',
+          email: 'tutorEmail',
+        }
+        const mapped: Partial<Record<keyof FormData, string>> = {}
+        for (const [key, msgs] of Object.entries(issues)) {
+          const field = fieldMap[key]
+          if (field && msgs[0]) mapped[field] = msgs[0]
+        }
+        if (Object.keys(mapped).length > 0) setErrors((prev) => ({ ...prev, ...mapped }))
+      }
       const message = getErrorMessage(err, 'Ocorreu um erro inesperado. Tente novamente.')
       showToast(message, 'error')
     } finally {
@@ -702,11 +762,11 @@ export function PatientRegisterPage() {
               id="species"
               className="register-select"
               value={form.species}
-              onChange={(e) => updateField('species', e.target.value)}
+              onChange={(e) => updateField('species', e.target.value as PatientSpecies | '')}
             >
               <option value="">Selecionar</option>
-              {SPECIES_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {PATIENT_SPECIES_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
             {errors.species && <span className="field-error">{errors.species}</span>}
@@ -756,26 +816,18 @@ export function PatientRegisterPage() {
               Sexo: <span className="required">*</span>
             </label>
             <div className="radio-group">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="sex"
-                  value="Feminino"
-                  checked={form.sex === 'Feminino'}
-                  onChange={(e) => updateField('sex', e.target.value)}
-                />
-                Feminino
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="sex"
-                  value="Masculino"
-                  checked={form.sex === 'Masculino'}
-                  onChange={(e) => updateField('sex', e.target.value)}
-                />
-                Masculino
-              </label>
+              {PATIENT_SEX_OPTIONS.map((option) => (
+                <label className="radio-option" key={option.value}>
+                  <input
+                    type="radio"
+                    name="sex"
+                    value={option.value}
+                    checked={form.sex === option.value}
+                    onChange={(e) => updateField('sex', e.target.value as PatientSex)}
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
             {errors.sex && <span className="field-error">{errors.sex}</span>}
           </div>
@@ -829,6 +881,40 @@ export function PatientRegisterPage() {
             </div>
           </div>
         )}
+
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <label className="register-label" htmlFor="reproductive-condition">
+              Condição reprodutiva:
+            </label>
+            <select
+              id="reproductive-condition"
+              className="register-select"
+              value={form.reproductiveCondition}
+              onChange={(e) => updateField('reproductiveCondition', e.target.value as ReproductiveCondition | '')}
+            >
+              <option value="">Não informado</option>
+              {REPRODUCTIVE_CONDITION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="register-label" htmlFor="coat-description">
+              Descrição da pelagem:
+            </label>
+            <input
+              id="coat-description"
+              className="register-input"
+              type="text"
+              placeholder="Ex.: caramelo, pelo curto"
+              value={form.coatDescription}
+              maxLength={500}
+              onChange={(e) => updateField('coatDescription', e.target.value)}
+            />
+          </div>
+        </div>
 
         {/* Observações */}
         <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
@@ -1013,6 +1099,7 @@ export function PatientRegisterPage() {
               disabled={tutorMode === 'existing'}
               onChange={(e) => updateField('tutorEmail', e.target.value)}
             />
+            {errors.tutorEmail && <span className="field-error">{errors.tutorEmail}</span>}
           </div>
         </div>
 
@@ -1036,6 +1123,17 @@ export function PatientRegisterPage() {
             </select>
           </div>
         </div>
+
+        <TutorAlternateContactsFields
+          idPrefix="register-tutor-contact"
+          contacts={alternateContacts}
+          errors={alternateContactErrors}
+          disabled={tutorMode === 'existing'}
+          onChange={(contacts) => {
+            setAlternateContacts(contacts)
+            setAlternateContactErrors([])
+          }}
+        />
 
         <p className="section-subtitle">Endereço</p>
 

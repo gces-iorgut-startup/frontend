@@ -20,6 +20,7 @@ export interface User {
 export interface Clinic {
   id: string
   name: string
+  code?: string
   cnpj?: string | null
   address?: string | null
   phone?: string | null
@@ -61,7 +62,22 @@ export interface RegisterRequest {
   crmv?: string
 }
 
+export interface RegisterVetRequest {
+  name: string
+  email: string
+  password: string
+  crmv: string
+  clinicCode: string
+}
+
 // ── Tutor ─────────────────────────────────────────
+export interface TutorAlternateContact {
+  name: string
+  phone: string
+  relationship: string
+  hasWhatsApp: boolean
+}
+
 export interface Tutor {
   id: string
   userId?: string | null
@@ -71,6 +87,7 @@ export interface Tutor {
   email?: string | null
   address?: string | null
   insurance?: string | null
+  alternateContacts?: TutorAlternateContact[] | null
   createdAt: string
   updatedAt: string
   patients?: Patient[]
@@ -83,6 +100,7 @@ export interface CreateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 export interface UpdateTutorRequest {
@@ -91,21 +109,28 @@ export interface UpdateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 // ── Patient ───────────────────────────────────────
+export type PatientSpecies = 'CANINE' | 'FELINE' | 'BIRD' | 'RODENT' | 'REPTILE'
+export type PatientSex = 'MALE' | 'FEMALE' | 'UNDETERMINED'
+export type ReproductiveCondition = 'FERTILE' | 'NEUTERED'
+
 export interface Patient {
   id: string
   name: string
   photoUrl?: string | null
   birthDate?: string | null
-  sex?: string | null
+  sex?: PatientSex | string | null
   weightKg?: number | null
   observations?: string | null
   microchip?: string | null
   allergies?: string | null
-  species: string
+  species: PatientSpecies | string
   breed?: string | null
+  reproductiveCondition?: ReproductiveCondition | null
+  coatDescription?: string | null
   tutorId: string
   createdAt: string
   updatedAt: string
@@ -115,10 +140,12 @@ export interface Patient {
 export interface CreatePatientRequest {
   name: string
   tutorId: string
-  species: string
+  species: PatientSpecies
   breed?: string
   birthDate?: string
-  sex?: string
+  sex: PatientSex
+  reproductiveCondition?: ReproductiveCondition
+  coatDescription?: string
   weightKg?: number
   observations?: string
   microchip?: string
@@ -128,10 +155,12 @@ export interface CreatePatientRequest {
 
 export interface UpdatePatientRequest {
   name?: string
-  species?: string
+  species?: PatientSpecies
   breed?: string
   birthDate?: string
-  sex?: string
+  sex?: PatientSex
+  reproductiveCondition?: ReproductiveCondition | null
+  coatDescription?: string | null
   weightKg?: number
   observations?: string
   microchip?: string
@@ -144,9 +173,11 @@ export interface RegisterPatientFormData {
   // Patient
   petName: string
   birthDate: string
-  species: string
+  species: PatientSpecies | ''
   breed: string
-  sex: string
+  sex: PatientSex | ''
+  reproductiveCondition: ReproductiveCondition | ''
+  coatDescription: string
   weightKg: string
   hasMicrochip: string
   observations: string
@@ -167,7 +198,14 @@ export interface RegisterPatientFormData {
 }
 
 // ── Appointments ──────────────────────────────────
-export type AppointmentCategory = 'VACCINATION' | 'OBSERVATION' | 'EXAM' | 'SURGICAL'
+export type AppointmentCategory =
+  | 'GENERAL'
+  | 'RETURN'
+  | 'SURGICAL_EVALUATION'
+  | 'VACCINATION'
+  | 'OBSERVATION'
+  | 'EXAM'
+  | 'SURGICAL'
 export type AppointmentStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 export interface Appointment {
@@ -193,6 +231,14 @@ export interface CreateAppointmentRequest {
   endDateTime?: string
   category: AppointmentCategory
   observation?: string
+}
+
+export interface UpdateAppointmentRequest {
+  category?: AppointmentCategory
+  observation?: string | null
+  dateTime?: string
+  endDateTime?: string | null
+  vetId?: string
 }
 
 // ── Clinical Records ──────────────────────────────
@@ -255,6 +301,8 @@ export interface Vaccination {
   vaccineName: string
   appliedAt?: string | null
   nextDoseAt?: string | null
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name'>
@@ -265,10 +313,36 @@ export interface CreateVaccinationRequest {
   vaccineName: string
   appliedAt?: string
   nextDoseAt?: string
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
 }
 
 // ── Exam Files ────────────────────────────────────
+export const CLINICAL_EXAM_TYPES = [
+  'HEMOGRAMA',
+  'BIOQUIMICO',
+  'RAIO_X',
+  'ULTRASSOM',
+  'URINA_FEZES',
+  'CITOLOGIA_BIOPSIA',
+  'CARDIOLOGICO',
+  'OUTRO',
+] as const
+
+export type ClinicalExamType = (typeof CLINICAL_EXAM_TYPES)[number]
+
+export const CLINICAL_EXAM_LABELS: Record<ClinicalExamType, string> = {
+  HEMOGRAMA: 'Hemograma',
+  BIOQUIMICO: 'Bioquímico',
+  RAIO_X: 'Raio-X',
+  ULTRASSOM: 'Ultrassom',
+  URINA_FEZES: 'Urina / Fezes',
+  CITOLOGIA_BIOPSIA: 'Citologia / Biópsia',
+  CARDIOLOGICO: 'Cardiológico',
+  OUTRO: 'Outro',
+}
+
 export interface ExamFile {
   id: string
   patientId: string
@@ -276,7 +350,18 @@ export interface ExamFile {
   fileName: string
   fileUrl: string
   fileType: 'pdf' | 'image'
+  clinicalType?: ClinicalExamType | string | null
   uploadedAt: string
+}
+
+// ── Patient Photos ────────────────────────────────
+export interface PatientPhoto {
+  id: string
+  patientId: string
+  photoUrl: string
+  description?: string | null
+  takenAt: string
+  createdAt: string
 }
 
 // ── Dashboard ─────────────────────────────────────
@@ -334,6 +419,27 @@ export interface AdminAppointmentsTrendPoint {
 export interface AdminAppointmentsTrendResponse {
   days: number
   trend: AdminAppointmentsTrendPoint[]
+}
+
+export interface RecentAppointmentActivity {
+  id: string
+  patientId: string
+  patientName: string
+  activityType: 'APPOINTMENT_UPDATED'
+  updatedAt: string
+}
+
+export interface RecentPatientActivity {
+  id: string
+  name: string
+  tutorName: string
+  activityType: 'PATIENT_CREATED'
+  createdAt: string
+}
+
+export interface RecentActivities {
+  recentAppointments: RecentAppointmentActivity[]
+  recentPatients: RecentPatientActivity[]
 }
 
 // ── Portal ────────────────────────────────────────

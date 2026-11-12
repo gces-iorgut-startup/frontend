@@ -33,6 +33,7 @@ export const TEST_DATA = {
 
   VET_NAME: 'Dra. Camila Ferreira',
   VET_EMAIL: 'camila.ferreira.e2e@iougurt.com',
+  VET_CRMV: 'CRMV-DF 12345',
 
   TUTOR_NAME: 'Ricardo Oliveira',
   TUTOR_EMAIL: 'ricardo.oliveira.e2e@iougurt.com',

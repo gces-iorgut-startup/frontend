@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { clinicalService } from '../../lib/clinicalService'
 import { getErrorMessage } from '../../lib/errorMessage'
+import { WeightEvolutionChart } from '../../components/WeightEvolutionChart'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import {
   getCareFormValues,
   getClinicalRecordPayload,
@@ -30,6 +32,7 @@ import '../../styles/clinical-care.css'
 type CareTab = 'atendimento' | 'dados' | 'prontuario'
 
 const EMPTY_FORM: CareFormValues = {
+  weightKg: '',
   clinicalNotes: '',
   breathingNotes: '',
   observations: '',
@@ -41,6 +44,12 @@ const EMPTY_FORM: CareFormValues = {
 
 function getAppointmentCategoryLabel(category?: string | null) {
   switch (category) {
+    case 'GENERAL':
+      return 'Consulta geral'
+    case 'RETURN':
+      return 'Retorno'
+    case 'SURGICAL_EVALUATION':
+      return 'Avaliação cirúrgica'
     case 'VACCINATION':
       return 'Vacinação'
     case 'EXAM':
@@ -83,6 +92,25 @@ function calculateAge(birthDate?: string | null) {
 function formatWeight(value?: string | number | null) {
   if (value === null || value === undefined || value === '') return '—'
   return `${value} kg`
+}
+
+/**
+ * "Peso atual" aparece em três lugares desta tela. A fonte mais confiável é
+ * a aferição mais recente: o que foi pesado neste atendimento ganha do último
+ * atendimento finalizado, que por sua vez ganha do peso do cadastro — esse
+ * último só muda quando alguém edita o paciente à mão, então envelhece.
+ */
+function resolveCurrentWeight(
+  savedWeightKg: string | undefined,
+  history: ClinicalHistoryItem[],
+  patient: Patient
+) {
+  if (savedWeightKg) return formatWeight(savedWeightKg)
+
+  const lastMeasured = history.find((item) => item.finalized && item.weightKg != null)
+  if (lastMeasured?.weightKg != null) return formatWeight(lastMeasured.weightKg)
+
+  return formatWeight(patient.weightKg as string | number | null | undefined)
 }
 
 function getMicrochipLabel(value?: string | null) {
@@ -139,7 +167,12 @@ function extractAddress(addressStr?: string | null) {
   return raw
 }
 
-function buildHistorySummary(patient: Patient, history: ClinicalHistoryItem[], vaccinations: Vaccination[]) {
+function buildHistorySummary(
+  patient: Patient,
+  history: ClinicalHistoryItem[],
+  vaccinations: Vaccination[],
+  savedWeightKg?: string
+) {
   const nextPending = vaccinations
     .filter((item) => item.status === 'PENDING' && item.nextDoseAt)
     .sort((a, b) => new Date(a.nextDoseAt ?? '').getTime() - new Date(b.nextDoseAt ?? '').getTime())[0]
@@ -149,9 +182,9 @@ function buildHistorySummary(patient: Patient, history: ClinicalHistoryItem[], v
   const lastFinished = history.find((item) => item.finalized)
 
   return {
-    species: patient.species,
+    species: getPatientSpeciesLabel(patient.species),
     age: calculateAge(patient.birthDate),
-    weight: formatWeight(patient.weightKg as string | number | null | undefined),
+    weight: resolveCurrentWeight(savedWeightKg, history, patient),
     vaccination: nextPending
       ? `Próxima dose em ${formatDate(nextPending.nextDoseAt)}`
       : overdueCount > 0
@@ -201,6 +234,11 @@ export function ClinicalCarePage() {
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
   const [showExitModal, setShowExitModal] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const currentAppointmentCategory = useMemo(
+    () => history.find(item => item.appointmentId === appointmentId)?.appointment?.category,
+    [appointmentId, history],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -267,8 +305,8 @@ export function ClinicalCarePage() {
 
   const summary = useMemo(() => {
     if (!patient) return null
-    return buildHistorySummary(patient, visibleHistory, vaccinations)
-  }, [patient, vaccinations, visibleHistory])
+    return buildHistorySummary(patient, visibleHistory, vaccinations, savedForm.weightKg)
+  }, [patient, savedForm.weightKg, vaccinations, visibleHistory])
 
   async function refreshHistoryData() {
     if (!patientId) return
@@ -517,7 +555,9 @@ export function ClinicalCarePage() {
                   </div>
                   <div className="care-summary-row">
                     <span>Peso atual:</span>
-                    <strong>{formatWeight(patient.weightKg as string | number | null | undefined)}</strong>
+                    <strong>
+                      {resolveCurrentWeight(savedForm.weightKg, visibleHistory, patient)}
+                    </strong>
                   </div>
                   <div className="care-summary-row">
                     <span>Sexo:</span>
@@ -527,6 +567,27 @@ export function ClinicalCarePage() {
               </div>
 
               {renderIougurtVetCard('care-side-card-mobile')}
+
+              <div className="care-appointment-type">
+                <span>Tipo de atendimento</span>
+                <h2>{getAppointmentCategoryLabel(currentAppointmentCategory)}</h2>
+              </div>
+
+              {/* Peso é o primeiro campo do atendimento de propósito: é a
+                  medida que a balança dá na entrada da consulta, e é o que
+                  alimenta o gráfico de evolução. */}
+              <div className="care-form-group">
+                <label htmlFor="care-weight">Peso (kg)</label>
+                <input
+                  id="care-weight"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.weightKg}
+                  onChange={(event) => handleFieldChange('weightKg', event.target.value)}
+                  placeholder="Ex.: 12,5"
+                  disabled={record.finalized}
+                />
+              </div>
 
               <div className="care-form-group">
                 <label htmlFor="clinical-notes">Queixa principal</label>
@@ -633,10 +694,10 @@ export function ClinicalCarePage() {
               <div className="care-info-row"><span>Nome do pet:</span><strong>{patient.name}</strong></div>
               <div className="care-info-row"><span>Sexo:</span><strong>{patient.sex || '—'}</strong></div>
               <div className="care-info-row"><span>Data de nascimento:</span><strong>{formatDate(patient.birthDate)}</strong></div>
-              <div className="care-info-row"><span>Peso atual:</span><strong>{formatWeight(patient.weightKg as string | number | null | undefined)}</strong></div>
+              <div className="care-info-row"><span>Peso atual:</span><strong>{resolveCurrentWeight(savedForm.weightKg, visibleHistory, patient)}</strong></div>
               <div className="care-info-row"><span>Idade:</span><strong>{calculateAge(patient.birthDate)}</strong></div>
               <div className="care-info-row"><span>Microchip:</span><strong>{getMicrochipLabel(patient.microchip)}</strong></div>
-              <div className="care-info-row"><span>Espécie:</span><strong>{patient.species}</strong></div>
+              <div className="care-info-row"><span>Espécie:</span><strong>{getPatientSpeciesLabel(patient.species)}</strong></div>
               <div className="care-info-row"><span>Observações:</span><strong>{patient.observations || '—'}</strong></div>
               <div className="care-info-row"><span>Raça:</span><strong>{patient.breed || '—'}</strong></div>
             </div>
@@ -671,6 +732,10 @@ export function ClinicalCarePage() {
 
       {activeTab === 'prontuario' && (
         <section className="care-panel">
+          {/* Durante o atendimento a curva é o contexto mais útil do
+              histórico: diz se o paciente está perdendo ou ganhando peso. */}
+          <WeightEvolutionChart history={visibleHistory} />
+
           <div className="care-history-table-wrapper">
             <table className="care-history-table">
               <thead>

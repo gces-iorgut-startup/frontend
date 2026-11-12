@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, Check, LoaderCircle, UserRound } from 'lucide-react'
+import { Building2, Check, Copy, LoaderCircle, UserRound } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../lib/authService'
 import { clinicService } from '../../lib/clinicService'
 import { getErrorMessage } from '../../lib/errorMessage'
-import { isValidCnpj, maskCnpj, maskPhone, onlyDigits } from '../../lib/documents'
+import { isValidCnpj, maskCnpj, maskPhone, normalizeCrmv, onlyDigits } from '../../lib/documents'
 import type { User } from '../../types'
 import '../../styles/settings.css'
 
@@ -17,17 +17,6 @@ function patchCurrentUser(partial: Partial<User>) {
 
 type FeedbackState = { kind: 'success' | 'error'; message: string } | null
 
-function normalizeCrmv(value: string) {
-  const trimmed = value.trim().toUpperCase()
-  if (!trimmed) return ''
-
-  const match = trimmed.match(/^(?:CRMV[-\s]?)?([A-Z]{2})[-\s]?(\d{4,6})$/)
-  if (!match) return null
-
-  const [, uf, number] = match
-  return `CRMV-${uf} ${number}`
-}
-
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
 
@@ -37,6 +26,8 @@ export function SettingsPage() {
   const [profile, setProfile] = useState<User | null>(null)
 
   const [clinicForm, setClinicForm] = useState({ name: '', cnpj: '', address: '', phone: '' })
+  const [clinicCode, setClinicCode] = useState('')
+  const [copiedCode, setCopiedCode] = useState(false)
   const [profileForm, setProfileForm] = useState({ name: '', crmv: '' })
 
   const [clinicFeedback, setClinicFeedback] = useState<FeedbackState>(null)
@@ -69,6 +60,7 @@ export function SettingsPage() {
             address: clinicRes.address ?? '',
             phone: maskPhone(clinicRes.phone ?? ''),
           })
+          setClinicCode(clinicRes.code ?? '')
         }
       } catch (err: unknown) {
         if (!cancelled) {
@@ -87,6 +79,17 @@ export function SettingsPage() {
       cancelled = true
     }
   }, [])
+
+  async function handleCopyClinicCode() {
+    if (!clinicCode) return
+    try {
+      await navigator.clipboard.writeText(clinicCode)
+      setCopiedCode(true)
+      setTimeout(() => setCopiedCode(false), 2000)
+    } catch {
+      // Fallback silencioso caso clipboard não esteja disponível
+    }
+  }
 
   async function handleClinicSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -182,6 +185,29 @@ export function SettingsPage() {
           <p className="settings-card-subtitle">
             Informações exibidas no cabeçalho das receitas geradas.
           </p>
+
+          {clinicCode && (
+            <div className="clinic-code-box">
+              <div className="clinic-code-info">
+                <span className="clinic-code-title">Sigla de Acesso da Clínica</span>
+                <p className="clinic-code-desc">
+                  Compartilhe este código com os médicos veterinários da sua equipe para que eles se vinculem à clínica no cadastro.
+                </p>
+              </div>
+              <div className="clinic-code-display">
+                <span className="clinic-code-badge" data-testid="clinic-code-badge">{clinicCode}</span>
+                <button
+                  type="button"
+                  className={`clinic-code-copy-btn ${copiedCode ? 'copied' : ''}`}
+                  onClick={handleCopyClinicCode}
+                  title="Copiar código para a área de transferência"
+                >
+                  {copiedCode ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copiedCode ? 'Copiado!' : 'Copiar código'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <form className="settings-form" onSubmit={handleClinicSubmit}>
             <label className="settings-field">

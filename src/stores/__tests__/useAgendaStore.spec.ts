@@ -9,6 +9,7 @@ vi.mock('../../services/appointments.service', () => ({
     create: vi.fn(),
     cancel: vi.fn(),
     reschedule: vi.fn(),
+    update: vi.fn(),
   },
 }))
 
@@ -95,6 +96,26 @@ describe('useAgendaStore (Zustand)', () => {
       dateTime: '2026-10-28T10:00:00.000Z',
       endDateTime: '2026-10-28T10:30:00.000Z',
     })
+  })
+
+  it('deve editar um atendimento existente e recarregar a agenda', async () => {
+    vi.mocked(AppointmentsService.update).mockResolvedValueOnce({
+      ...mockAppointment,
+      category: 'RETURN',
+      observation: 'Retorno clínico',
+    })
+    vi.mocked(AppointmentsService.listByDay).mockResolvedValueOnce([mockAppointment])
+
+    await useAgendaStore.getState().updateAppointment('apt-1', {
+      category: 'RETURN',
+      observation: 'Retorno clínico',
+    })
+
+    expect(AppointmentsService.update).toHaveBeenCalledWith('apt-1', {
+      category: 'RETURN',
+      observation: 'Retorno clínico',
+    })
+    expect(AppointmentsService.listByDay).toHaveBeenCalledWith('2026-10-27')
   })
 })
 
