@@ -30,6 +30,7 @@ import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
+import { PatientPhotoGallery } from '../../components/PatientPhotoGallery'
 import { VaccinationSection } from '../../components/VaccinationSection'
 import type {
   Appointment,
@@ -41,7 +42,7 @@ import type {
 } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'vacinacao'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -422,6 +423,13 @@ export function PatientDetailsPage() {
           Exames
         </button>
         <button
+          className={`patient-details-tab${activeTab === 'fotos' ? ' active' : ''}`}
+          onClick={() => setActiveTab('fotos')}
+          type="button"
+        >
+          Fotos
+        </button>
+        <button
           className={`patient-details-tab${activeTab === 'vacinacao' ? ' active' : ''}`}
           onClick={() => setActiveTab('vacinacao')}
           type="button"
@@ -720,6 +728,9 @@ export function PatientDetailsPage() {
         </section>
       )}
 
+      {/* A galeria busca as próprias fotos ao montar, então só paga a request
+          quando o usuário realmente abre a aba. */}
+      {activeTab === 'fotos' && <PatientPhotoGallery patientId={patient.id} />}
       {activeTab === 'vacinacao' && patient && (
         <VaccinationSection patientId={patient.id} canRegister={user?.role !== 'TUTOR'} />
       )}

@@ -329,6 +329,16 @@ export interface ExamFile {
   uploadedAt: string
 }
 
+// ── Patient Photos ────────────────────────────────
+export interface PatientPhoto {
+  id: string
+  patientId: string
+  photoUrl: string
+  description?: string | null
+  takenAt: string
+  createdAt: string
+}
+
 // ── Dashboard ─────────────────────────────────────
 export interface DailyOverview {
   totalAppointments: number
