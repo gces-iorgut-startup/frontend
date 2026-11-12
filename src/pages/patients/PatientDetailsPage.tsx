@@ -30,6 +30,7 @@ import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
+import { VaccinationSection } from '../../components/VaccinationSection'
 import type {
   Appointment,
   AppointmentCategory,
@@ -40,7 +41,7 @@ import type {
 } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'vacinacao'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -420,6 +421,13 @@ export function PatientDetailsPage() {
         >
           Exames
         </button>
+        <button
+          className={`patient-details-tab${activeTab === 'vacinacao' ? ' active' : ''}`}
+          onClick={() => setActiveTab('vacinacao')}
+          type="button"
+        >
+          Vacinação
+        </button>
       </div>
 
       {activeTab === 'dados' && (
@@ -710,6 +718,10 @@ export function PatientDetailsPage() {
             </table>
           </div>
         </section>
+      )}
+
+      {activeTab === 'vacinacao' && patient && (
+        <VaccinationSection patientId={patient.id} canRegister={user?.role !== 'TUTOR'} />
       )}
 
       {showStartCareModal && (
