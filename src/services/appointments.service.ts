@@ -9,7 +9,7 @@ interface RescheduleAppointmentRequest {
 export const AppointmentsService = {
   async listByDay(date: string, vetId?: string): Promise<Appointment[]> {
     const response = await api.get<{ appointments: Appointment[] }>('/appointments', {
-      params: { date, vetId },
+      params: { date, vetId, tzOffset: new Date().getTimezoneOffset() },
     })
     return response.data.appointments
   },
@@ -39,7 +39,7 @@ export const AppointmentsService = {
   },
 
   async update(id: string, data: UpdateAppointmentRequest): Promise<Appointment> {
-    const response = await api.patch<Appointment>(`/appointments/${id}`, data)
-    return response.data
+    const response = await api.patch<{ appointment: Appointment }>(`/appointments/${id}`, data)
+    return response.data.appointment
   },
 }
