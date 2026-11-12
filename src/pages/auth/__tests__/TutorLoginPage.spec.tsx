@@ -30,8 +30,7 @@ describe('TutorLoginPage', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
-      accessToken: 'token',
-      refreshToken: 'refresh',
+      csrfToken: 'csrf-token',
     })
 
     render(
@@ -65,8 +64,7 @@ describe('TutorLoginPage', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
-      accessToken: 'token',
-      refreshToken: 'refresh',
+      csrfToken: 'csrf-token',
     })
 
     render(

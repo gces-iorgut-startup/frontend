@@ -46,7 +46,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       const data = await authService.login({ email, password })
-      setAuth(data.user, data.accessToken, data.refreshToken)
+      setAuth(data.user, data.csrfToken)
       navigate(data.user.role === 'TUTOR' ? '/portal' : '/home')
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao fazer login. Verifique suas credenciais.'))
@@ -61,7 +61,7 @@ export function LoginPage() {
     setGoogleLoading(true)
     try {
       const data = await authService.googleLogin(accessToken)
-      setAuth(data.user, data.accessToken, data.refreshToken)
+      setAuth(data.user, data.csrfToken)
       navigate(data.user.role === 'TUTOR' ? '/portal' : '/home')
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao autenticar com o Google.'))

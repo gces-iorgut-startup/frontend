@@ -15,7 +15,7 @@ const mockUser: User = {
 describe('useAuthStore (Zustand)', () => {
   beforeEach(() => {
     localStorage.clear()
-    useAuthStore.setState({ user: null, isAuthenticated: false })
+    useAuthStore.setState({ user: null, csrfToken: null, isAuthenticated: false })
   })
 
   it('deve iniciar desautenticado com user null', () => {
@@ -25,7 +25,7 @@ describe('useAuthStore (Zustand)', () => {
   })
 
   it('deve autenticar o usuário e persistir no localStorage via setAuth', () => {
-    useAuthStore.getState().setAuth(mockUser)
+    useAuthStore.getState().setAuth(mockUser, 'csrf-token')
 
     const state = useAuthStore.getState()
     expect(state.isAuthenticated).toBe(true)
@@ -38,13 +38,23 @@ describe('useAuthStore (Zustand)', () => {
     expect(persisted.state.user.email).toBe('ana@iougurt.com')
   })
 
+  it('não guarda access/refresh token no localStorage (ficam em cookies HttpOnly)', () => {
+    useAuthStore.getState().setAuth(mockUser, 'csrf-token')
+
+    const persisted = JSON.parse(localStorage.getItem('iougurt-auth')!)
+    expect(persisted.state.csrfToken).toBe('csrf-token')
+    expect(persisted.state).not.toHaveProperty('accessToken')
+    expect(persisted.state).not.toHaveProperty('refreshToken')
+  })
+
   it('deve limpar o estado e a persistência ao executar logout', () => {
-    useAuthStore.getState().setAuth(mockUser)
+    useAuthStore.getState().setAuth(mockUser, 'csrf-token')
     useAuthStore.getState().logout()
 
     const state = useAuthStore.getState()
     expect(state.user).toBeNull()
     expect(state.isAuthenticated).toBe(false)
+    expect(state.csrfToken).toBeNull()
 
     const persisted = JSON.parse(localStorage.getItem('iougurt-auth')!)
     expect(persisted.state.user).toBeNull()

@@ -29,8 +29,7 @@ describe('LoginPage', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
-      accessToken: 'jwt-access',
-      refreshToken: 'jwt-refresh',
+      csrfToken: 'csrf-token',
     })
 
     render(
