@@ -14,6 +14,9 @@ import type {
 import '../../styles/portal.css'
 
 const APPOINTMENT_LABELS: Record<string, string> = {
+  GENERAL: 'Consulta geral',
+  RETURN: 'Retorno',
+  SURGICAL_EVALUATION: 'Avaliação cirúrgica',
   VACCINATION: 'Vacinacao',
   OBSERVATION: 'Consulta',
   EXAM: 'Hemograma',
@@ -21,6 +24,9 @@ const APPOINTMENT_LABELS: Record<string, string> = {
 }
 
 const APPOINTMENT_CLASSES: Record<string, string> = {
+  GENERAL: 'tutor-appointment-row yellow',
+  RETURN: 'tutor-appointment-row cyan',
+  SURGICAL_EVALUATION: 'tutor-appointment-row lilac',
   VACCINATION: 'tutor-appointment-row cyan',
   OBSERVATION: 'tutor-appointment-row yellow',
   EXAM: 'tutor-appointment-row lilac',

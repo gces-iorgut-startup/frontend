@@ -198,7 +198,14 @@ export interface RegisterPatientFormData {
 }
 
 // ── Appointments ──────────────────────────────────
-export type AppointmentCategory = 'VACCINATION' | 'OBSERVATION' | 'EXAM' | 'SURGICAL'
+export type AppointmentCategory =
+  | 'GENERAL'
+  | 'RETURN'
+  | 'SURGICAL_EVALUATION'
+  | 'VACCINATION'
+  | 'OBSERVATION'
+  | 'EXAM'
+  | 'SURGICAL'
 export type AppointmentStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 export interface Appointment {
