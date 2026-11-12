@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { toLocalDateString } from '../lib/localDate'
 import { Camera, X, Image as ImageIcon } from 'lucide-react'
 import { photoService } from '../lib/photoService'
 import { toTakenAtISO } from '../lib/photoDate'
@@ -22,7 +23,7 @@ export function UploadPhotoModal({ patientId, onClose, onSuccess }: UploadPhotoM
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateString()
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = e.target.files?.[0]

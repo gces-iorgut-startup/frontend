@@ -46,8 +46,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    // Endpoints de autenticação devolvem 401 para credenciais inválidas; não
+    // há sessão a renovar e tentar o refresh aqui mascararia o erro real.
+    const isAuthEndpoint = /\/auth\/(login|register|refresh|google|first-access|set-password|reset-password|forgot-password)/.test(
+      originalRequest?.url ?? '',
+    )
+
     // If 401 and we haven't already retried
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // Queue this request until refresh is done
         return new Promise((resolve, reject) => {
@@ -85,7 +91,12 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        useAuthStore.getState().logout()
+        // Só encerra a sessão se o servidor rejeitou o refresh token. Queda de
+        // rede ou 5xx não devem deslogar o usuário.
+        const status = (refreshError as { response?: { status?: number } })?.response?.status
+        if (status === 400 || status === 401 || status === 403 || status === 404) {
+          useAuthStore.getState().logout()
+        }
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
