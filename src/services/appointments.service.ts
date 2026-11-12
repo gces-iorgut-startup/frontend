@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Appointment, CreateAppointmentRequest } from '../types'
+import type { Appointment, CreateAppointmentRequest, UpdateAppointmentRequest } from '../types'
 
 interface RescheduleAppointmentRequest {
   dateTime: string
@@ -35,6 +35,11 @@ export const AppointmentsService = {
 
   async reschedule(id: string, data: RescheduleAppointmentRequest): Promise<Appointment> {
     const response = await api.patch<Appointment>(`/appointments/${id}/reschedule`, data)
+    return response.data
+  },
+
+  async update(id: string, data: UpdateAppointmentRequest): Promise<Appointment> {
+    const response = await api.patch<Appointment>(`/appointments/${id}`, data)
     return response.data
   },
 }

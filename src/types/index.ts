@@ -233,6 +233,14 @@ export interface CreateAppointmentRequest {
   observation?: string
 }
 
+export interface UpdateAppointmentRequest {
+  category?: AppointmentCategory
+  observation?: string | null
+  dateTime?: string
+  endDateTime?: string | null
+  vetId?: string
+}
+
 // ── Clinical Records ──────────────────────────────
 export interface ClinicalRecord {
   id: string
@@ -372,6 +380,27 @@ export interface AdminAppointmentsTrendPoint {
 export interface AdminAppointmentsTrendResponse {
   days: number
   trend: AdminAppointmentsTrendPoint[]
+}
+
+export interface RecentAppointmentActivity {
+  id: string
+  patientId: string
+  patientName: string
+  activityType: 'APPOINTMENT_UPDATED'
+  updatedAt: string
+}
+
+export interface RecentPatientActivity {
+  id: string
+  name: string
+  tutorName: string
+  activityType: 'PATIENT_CREATED'
+  createdAt: string
+}
+
+export interface RecentActivities {
+  recentAppointments: RecentAppointmentActivity[]
+  recentPatients: RecentPatientActivity[]
 }
 
 // ── Portal ────────────────────────────────────────
