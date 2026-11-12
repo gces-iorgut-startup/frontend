@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -34,12 +34,14 @@ import { PatientPhotoGallery } from '../../components/PatientPhotoGallery'
 import { VaccinationSection } from '../../components/VaccinationSection'
 import type {
   Appointment,
+  ClinicalExamType,
   AppointmentCategory,
   ClinicalHistoryItem,
   CreateTutorAccountResponse,
   ExamFile,
   Patient,
 } from '../../types'
+import { CLINICAL_EXAM_TYPES, CLINICAL_EXAM_LABELS } from '../../types'
 import '../../styles/patients.css'
 
 type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao'
@@ -195,6 +197,7 @@ export function PatientDetailsPage() {
   const [showStartCareModal, setShowStartCareModal] = useState(false)
   const [startCareCategory, setStartCareCategory] = useState<AppointmentCategory>('GENERAL')
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [examTypeFilter, setExamTypeFilter] = useState<string>('ALL')
   const [showTutorAccessModal, setShowTutorAccessModal] = useState(false)
   const [tutorAccessEmail, setTutorAccessEmail] = useState('')
   const [creatingTutorAccess, setCreatingTutorAccess] = useState(false)
@@ -234,6 +237,12 @@ export function PatientDetailsPage() {
   useEffect(() => {
     setTutorAccessEmail(patient?.tutor?.email ?? '')
   }, [patient?.tutor?.email, patient?.tutor?.id])
+
+  const filteredExams = useMemo(() => {
+    if (examTypeFilter === 'ALL') return exams
+    if (examTypeFilter === 'UNSPECIFIED') return exams.filter((e) => !e.clinicalType)
+    return exams.filter((e) => e.clinicalType === examTypeFilter)
+  }, [exams, examTypeFilter])
 
   if (loading) {
     return (
@@ -663,8 +672,35 @@ export function PatientDetailsPage() {
 
       {activeTab === 'exames' && (
         <section className="patient-records-panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b' }}>Exames Anexados</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>Exames Anexados</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label htmlFor="filter-exam-type" style={{ fontSize: '0.875rem', color: '#64748b' }}>Filtrar por tipo:</label>
+                <select
+                  id="filter-exam-type"
+                  aria-label="Filtrar por tipo de exame"
+                  value={examTypeFilter}
+                  onChange={(e) => setExamTypeFilter(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.875rem',
+                    backgroundColor: '#fff',
+                    color: '#334155',
+                  }}
+                >
+                  <option value="ALL">Todos os tipos</option>
+                  {CLINICAL_EXAM_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {CLINICAL_EXAM_LABELS[type]}
+                    </option>
+                  ))}
+                  <option value="UNSPECIFIED">Não informado / Legado</option>
+                </select>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setShowUploadModal(true)}
@@ -684,15 +720,35 @@ export function PatientDetailsPage() {
             <table className="patient-records-table">
               <thead>
                 <tr>
+                  <th>Tipo</th>
                   <th>Arquivo</th>
                   <th>Data do Upload</th>
                   <th>Ação</th>
                 </tr>
               </thead>
               <tbody>
-                {exams.length > 0 ? (
-                  exams.map((item) => (
+                {filteredExams.length > 0 ? (
+                  filteredExams.map((item) => (
                     <tr key={item.id}>
+                      <td>
+                        <span
+                          className="exam-type-badge"
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            backgroundColor: item.clinicalType ? '#f1f5f9' : '#f8fafc',
+                            color: item.clinicalType ? '#0f172a' : '#64748b',
+                            border: '1px solid #e2e8f0',
+                          }}
+                        >
+                          {item.clinicalType
+                            ? CLINICAL_EXAM_LABELS[item.clinicalType as ClinicalExamType] || item.clinicalType
+                            : 'Não informado'}
+                        </span>
+                      </td>
                       <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {item.fileType === 'pdf' ? (
                            <FileText size={18} color="#ef4444" />
@@ -709,6 +765,7 @@ export function PatientDetailsPage() {
                           onClick={() => examService.downloadExamFile(item.fileUrl, item.fileName)}
                           className="patient-records-action"
                           style={{ display: 'inline-flex', padding: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                          title="Baixar exame"
                         >
                           <Download size={16} />
                         </button>
@@ -717,8 +774,10 @@ export function PatientDetailsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="patient-records-empty">
-                      Nenhum exame anexado a este paciente.
+                    <td colSpan={4} className="patient-records-empty">
+                      {exams.length === 0
+                        ? 'Nenhum exame anexado a este paciente.'
+                        : 'Nenhum exame encontrado para o filtro selecionado.'}
                     </td>
                   </tr>
                 )}

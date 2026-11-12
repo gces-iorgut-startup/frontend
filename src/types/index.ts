@@ -319,6 +319,30 @@ export interface CreateVaccinationRequest {
 }
 
 // ── Exam Files ────────────────────────────────────
+export const CLINICAL_EXAM_TYPES = [
+  'HEMOGRAMA',
+  'BIOQUIMICO',
+  'RAIO_X',
+  'ULTRASSOM',
+  'URINA_FEZES',
+  'CITOLOGIA_BIOPSIA',
+  'CARDIOLOGICO',
+  'OUTRO',
+] as const
+
+export type ClinicalExamType = (typeof CLINICAL_EXAM_TYPES)[number]
+
+export const CLINICAL_EXAM_LABELS: Record<ClinicalExamType, string> = {
+  HEMOGRAMA: 'Hemograma',
+  BIOQUIMICO: 'Bioquímico',
+  RAIO_X: 'Raio-X',
+  ULTRASSOM: 'Ultrassom',
+  URINA_FEZES: 'Urina / Fezes',
+  CITOLOGIA_BIOPSIA: 'Citologia / Biópsia',
+  CARDIOLOGICO: 'Cardiológico',
+  OUTRO: 'Outro',
+}
+
 export interface ExamFile {
   id: string
   patientId: string
@@ -326,6 +350,7 @@ export interface ExamFile {
   fileName: string
   fileUrl: string
   fileType: 'pdf' | 'image'
+  clinicalType?: ClinicalExamType | string | null
   uploadedAt: string
 }
 
