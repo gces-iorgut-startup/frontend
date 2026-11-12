@@ -138,9 +138,15 @@ describe('api (sessão por cookie + CSRF)', () => {
       expect(refresh).toHaveBeenCalledTimes(1)
     })
 
-    it('encerra a sessão local quando o refresh falha', async () => {
+    it('encerra a sessão local quando o servidor rejeita o refresh', async () => {
       mockServer(() => ({ status: 401 }))
-      const refreshError = new Error('refresh expirado')
+      const refreshError = new AxiosError('refresh expirado', 'ERR_BAD_REQUEST', undefined, null, {
+        status: 401,
+        data: {},
+        statusText: '',
+        headers: {},
+        config: {} as InternalAxiosRequestConfig,
+      })
       mockRefresh(refreshError)
 
       await expect(api.get('/patients')).rejects.toBe(refreshError)
@@ -149,6 +155,16 @@ describe('api (sessão por cookie + CSRF)', () => {
       expect(state.isAuthenticated).toBe(false)
       expect(state.user).toBeNull()
       expect(state.csrfToken).toBeNull()
+    })
+
+    it('mantém a sessão quando o refresh falha por rede ou 5xx', async () => {
+      mockServer(() => ({ status: 401 }))
+      const networkError = new AxiosError('Network Error', 'ERR_NETWORK')
+      mockRefresh(networkError)
+
+      await expect(api.get('/patients')).rejects.toBe(networkError)
+
+      expect(useAuthStore.getState().isAuthenticated).toBe(true)
     })
 
     it('não entra em loop se a requisição continua dando 401 depois do refresh', async () => {
@@ -171,8 +187,18 @@ describe('api (sessão por cookie + CSRF)', () => {
       expect(refresh).not.toHaveBeenCalled()
     })
 
+    it('encerra a sessão local em 403 de CSRF, sem tentar renovar', async () => {
+      mockServer(() => ({ status: 403, data: { message: 'Token CSRF inválido ou ausente.' } }))
+      const refresh = mockRefresh({ csrfToken: 'x' })
+
+      await expect(api.post('/patients')).rejects.toMatchObject({ response: { status: 403 } })
+
+      expect(refresh).not.toHaveBeenCalled()
+      expect(useAuthStore.getState().isAuthenticated).toBe(false)
+    })
+
     it('não renova em erros que não são 401', async () => {
-      mockServer(() => ({ status: 403 }))
+      mockServer(() => ({ status: 403, data: { message: 'Sem permissão.' } }))
       const refresh = mockRefresh({ csrfToken: 'x' })
 
       await expect(api.post('/patients')).rejects.toMatchObject({ response: { status: 403 } })
