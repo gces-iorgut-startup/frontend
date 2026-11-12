@@ -44,6 +44,12 @@ const EMPTY_FORM: CareFormValues = {
 
 function getAppointmentCategoryLabel(category?: string | null) {
   switch (category) {
+    case 'GENERAL':
+      return 'Consulta geral'
+    case 'RETURN':
+      return 'Retorno'
+    case 'SURGICAL_EVALUATION':
+      return 'Avaliação cirúrgica'
     case 'VACCINATION':
       return 'Vacinação'
     case 'EXAM':
@@ -228,6 +234,11 @@ export function ClinicalCarePage() {
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
   const [showExitModal, setShowExitModal] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const currentAppointmentCategory = useMemo(
+    () => history.find(item => item.appointmentId === appointmentId)?.appointment?.category,
+    [appointmentId, history],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -556,6 +567,11 @@ export function ClinicalCarePage() {
               </div>
 
               {renderIougurtVetCard('care-side-card-mobile')}
+
+              <div className="care-appointment-type">
+                <span>Tipo de atendimento</span>
+                <h2>{getAppointmentCategoryLabel(currentAppointmentCategory)}</h2>
+              </div>
 
               {/* Peso é o primeiro campo do atendimento de propósito: é a
                   medida que a balança dá na entrada da consulta, e é o que

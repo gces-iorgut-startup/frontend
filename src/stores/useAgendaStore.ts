@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { AppointmentsService } from '../services/appointments.service'
-import type { Appointment, CreateAppointmentRequest } from '../types'
+import type { Appointment, CreateAppointmentRequest, UpdateAppointmentRequest } from '../types'
 
 function todayISO(): string {
   const d = new Date()
@@ -21,6 +21,7 @@ interface AgendaState {
   createAppointment: (data: CreateAppointmentRequest) => Promise<void>
   cancelAppointment: (id: string, reason: string) => Promise<void>
   rescheduleAppointment: (id: string, dateTime: string, endDateTime: string) => Promise<void>
+  updateAppointment: (id: string, data: UpdateAppointmentRequest) => Promise<void>
 }
 
 export const useAgendaStore = create<AgendaState>()((set, get) => ({
@@ -85,6 +86,20 @@ export const useAgendaStore = create<AgendaState>()((set, get) => ({
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Erro ao reagendar.'
+      set({ error: message, isLoading: false })
+      throw new Error(message)
+    }
+  },
+
+  updateAppointment: async (id, data) => {
+    set({ isLoading: true, error: null })
+    try {
+      await AppointmentsService.update(id, data)
+      await get().fetchAppointments()
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Erro ao editar atendimento.'
       set({ error: message, isLoading: false })
       throw new Error(message)
     }

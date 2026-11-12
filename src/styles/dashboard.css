@@ -113,6 +113,90 @@
   padding: 18px;
 }
 
+.dashboard-activity-card {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  padding: 18px;
+}
+
+.dashboard-activity-header {
+  margin-bottom: 14px;
+}
+
+.dashboard-activity-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gray-900);
+  font-size: 1.15rem;
+}
+
+.dashboard-activity-header h2 svg {
+  color: var(--pink-500);
+}
+
+.dashboard-activity-header p {
+  margin-top: 3px;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
+.dashboard-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-activity-item {
+  width: 100%;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.dashboard-activity-item:hover {
+  border-color: var(--pink-300);
+  background: var(--pink-50);
+}
+
+.dashboard-activity-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pink-50);
+  color: var(--pink-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-activity-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dashboard-activity-content strong {
+  color: var(--gray-900);
+  font-size: 0.9rem;
+}
+
+.dashboard-activity-content span,
+.dashboard-activity-item time {
+  color: var(--gray-500);
+  font-size: 0.78rem;
+}
+
 .dashboard-details-grid {
   display: grid;
   gap: 12px;
@@ -277,5 +361,16 @@
   .dashboard-bars-grid {
     grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
     gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-activity-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .dashboard-activity-item time {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
