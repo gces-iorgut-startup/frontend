@@ -71,6 +71,13 @@ export interface RegisterVetRequest {
 }
 
 // ── Tutor ─────────────────────────────────────────
+export interface TutorAlternateContact {
+  name: string
+  phone: string
+  relationship: string
+  hasWhatsApp: boolean
+}
+
 export interface Tutor {
   id: string
   userId?: string | null
@@ -80,6 +87,7 @@ export interface Tutor {
   email?: string | null
   address?: string | null
   insurance?: string | null
+  alternateContacts?: TutorAlternateContact[] | null
   createdAt: string
   updatedAt: string
   patients?: Patient[]
@@ -92,6 +100,7 @@ export interface CreateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 export interface UpdateTutorRequest {
@@ -100,6 +109,7 @@ export interface UpdateTutorRequest {
   email?: string
   address?: string
   insurance?: string
+  alternateContacts?: TutorAlternateContact[]
 }
 
 // ── Patient ───────────────────────────────────────
@@ -188,7 +198,14 @@ export interface RegisterPatientFormData {
 }
 
 // ── Appointments ──────────────────────────────────
-export type AppointmentCategory = 'VACCINATION' | 'OBSERVATION' | 'EXAM' | 'SURGICAL'
+export type AppointmentCategory =
+  | 'GENERAL'
+  | 'RETURN'
+  | 'SURGICAL_EVALUATION'
+  | 'VACCINATION'
+  | 'OBSERVATION'
+  | 'EXAM'
+  | 'SURGICAL'
 export type AppointmentStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 export interface Appointment {
@@ -214,6 +231,14 @@ export interface CreateAppointmentRequest {
   endDateTime?: string
   category: AppointmentCategory
   observation?: string
+}
+
+export interface UpdateAppointmentRequest {
+  category?: AppointmentCategory
+  observation?: string | null
+  dateTime?: string
+  endDateTime?: string | null
+  vetId?: string
 }
 
 // ── Clinical Records ──────────────────────────────
@@ -276,6 +301,8 @@ export interface Vaccination {
   vaccineName: string
   appliedAt?: string | null
   nextDoseAt?: string | null
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name'>
@@ -286,6 +313,8 @@ export interface CreateVaccinationRequest {
   vaccineName: string
   appliedAt?: string
   nextDoseAt?: string
+  doseNumber?: number | null
+  intervalDays?: number | null
   status: VaccinationStatus
 }
 
@@ -365,6 +394,27 @@ export interface AdminAppointmentsTrendPoint {
 export interface AdminAppointmentsTrendResponse {
   days: number
   trend: AdminAppointmentsTrendPoint[]
+}
+
+export interface RecentAppointmentActivity {
+  id: string
+  patientId: string
+  patientName: string
+  activityType: 'APPOINTMENT_UPDATED'
+  updatedAt: string
+}
+
+export interface RecentPatientActivity {
+  id: string
+  name: string
+  tutorName: string
+  activityType: 'PATIENT_CREATED'
+  createdAt: string
+}
+
+export interface RecentActivities {
+  recentAppointments: RecentAppointmentActivity[]
+  recentPatients: RecentPatientActivity[]
 }
 
 // ── Portal ────────────────────────────────────────

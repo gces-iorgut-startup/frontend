@@ -36,6 +36,7 @@ describe('PatientEditPage', () => {
             email: null,
             insurance: null,
             address: null,
+            alternateContacts: [],
           },
         },
       },
@@ -66,11 +67,64 @@ describe('PatientEditPage', () => {
           species: 'CANINE',
           sex: 'FEMALE',
           coatDescription: 'Caramelo e curta',
-          tutor: {
+          tutor: expect.objectContaining({
             cpf: '52998224725',
             fullName: 'Mariana Costa',
             phone: '11988887777',
+            alternateContacts: [],
+          }),
+        }),
+      )
+    })
+  })
+
+  it('carrega e permite remover os contatos alternativos do tutor', async () => {
+    const user = userEvent.setup({ delay: null })
+    vi.mocked(api.get).mockResolvedValueOnce({
+      data: {
+        patient: {
+          id: 'patient-1',
+          name: 'Luna',
+          species: 'CANINE',
+          sex: 'FEMALE',
+          tutor: {
+            id: 'tutor-1',
+            fullName: 'Mariana Costa',
+            cpf: '52998224725',
+            phone: '11988887777',
+            alternateContacts: [
+              {
+                name: 'João Silva',
+                phone: '61999991111',
+                relationship: 'Cônjuge',
+                hasWhatsApp: true,
+              },
+            ],
           },
+        },
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/pacientes/patient-1/editar']}>
+        <Routes>
+          <Route path="/pacientes/:id/editar" element={<PatientEditPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByDisplayValue('João Silva')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('(61) 99999-1111')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Remover contato alternativo 1/i }))
+    await user.click(screen.getByRole('button', { name: /Salvar alterações/i }))
+    await user.click(screen.getByRole('button', { name: /^Salvar$/i }))
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        '/patients/patient-1',
+        expect.objectContaining({
+          tutor: expect.objectContaining({ alternateContacts: [] }),
         }),
       )
     })
