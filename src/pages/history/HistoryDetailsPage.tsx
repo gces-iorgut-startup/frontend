@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, FileText, LoaderCircle, Share2 } from 'lucide-react'
-import { parseRoutineGuidance } from '../../lib/clinicalRecordContent'
+import { resolveRecordObservations } from '../../lib/clinicalRecordContent'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { historyService } from '../../lib/historyService'
 import { clinicalService } from '../../lib/clinicalService'
@@ -31,7 +31,7 @@ function downloadTextFile(fileName: string, content: string) {
 }
 
 function buildExportContent(patient: Patient, record: ClinicalHistoryItem) {
-  const routineGuidance = parseRoutineGuidance(record.routineGuidance)
+  const routineGuidance = resolveRecordObservations(record)
 
   return [
     `Atendimento - ${formatDateTime(record.appointment?.dateTime ?? record.createdAt)}`,
@@ -132,7 +132,7 @@ export function HistoryDetailsPage() {
   }, [patient, record])
 
   const routineGuidance = useMemo(
-    () => (record ? parseRoutineGuidance(record.routineGuidance) : { observations: '', additionalObservations: '' }),
+    () => (record ? resolveRecordObservations(record) : { observations: '', additionalObservations: '' }),
     [record],
   )
 

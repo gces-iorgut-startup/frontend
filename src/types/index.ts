@@ -254,6 +254,8 @@ export interface ClinicalRecord {
   prescriptions?: string | null
   breathingNotes?: string | null
   routineGuidance?: string | null
+  /** CLI-01 — observações do atendimento, campo próprio. */
+  observations?: string | null
   aiSummary?: string | null
   finalized: boolean
   createdAt: string
@@ -290,6 +292,7 @@ export interface UpdateClinicalRecordRequest {
   prescriptions?: string
   breathingNotes?: string
   routineGuidance?: string
+  observations?: string
 }
 
 // ── Vaccinations ──────────────────────────────────
@@ -493,6 +496,8 @@ export interface TutorPortalClinicalRecord {
   pendingDiagnosis?: string | null
   prescriptions?: string | null
   routineGuidance?: string | null
+  /** CLI-01 — observações do atendimento, campo próprio. */
+  observations?: string | null
   aiSummary?: string | null
   weightKg?: number | null
   finalized: boolean
