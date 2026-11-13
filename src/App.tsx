@@ -30,6 +30,7 @@ import { HistoryListPage } from './pages/history/HistoryListPage'
 import { HistoryDetailsPage } from './pages/history/HistoryDetailsPage'
 import { HospitalizationDashboard } from './pages/hospitalizations/HospitalizationDashboard'
 import { HospitalizationDetailsPage } from './pages/hospitalizations/HospitalizationDetailsPage'
+import { VaccinationAlertsPage } from './pages/clinical/VaccinationAlertsPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 import { TutorPortalHomePage } from './pages/portal/TutorPortalHomePage'
 import { TutorPortalHistoryPage } from './pages/portal/TutorPortalHistoryPage'
@@ -132,6 +133,7 @@ export default function App() {
               element={<ClinicalCarePage />}
             />
             <Route path="agenda" element={<AgendaPage />} />
+            <Route path="vacinas/alertas" element={<VaccinationAlertsPage />} />
             <Route path="historico" element={<HistoryListPage />} />
             <Route path="historico/:recordId/pacientes/:patientId" element={<HistoryDetailsPage />} />
             <Route path="internacao" element={<HospitalizationDashboard />} />

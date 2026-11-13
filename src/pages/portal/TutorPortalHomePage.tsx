@@ -5,6 +5,8 @@ import { getErrorMessage } from '../../lib/errorMessage'
 import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import { portalService } from '../../lib/portalService'
 import { useAuthStore } from '../../stores/authStore'
+import { TutorVaccineAlertBanner } from '../../components/portal/TutorVaccineAlertBanner'
+import { RequestAppointmentModal } from '../../components/portal/RequestAppointmentModal'
 import type {
   TutorAlert,
   TutorDashboard,
@@ -133,6 +135,14 @@ export function TutorPortalHomePage() {
   const [selectedPetId, setSelectedPetId] = useState('')
   const [selectedHistory, setSelectedHistory] = useState<TutorPortalPatientHistory | null>(null)
   const [petTransitionDirection, setPetTransitionDirection] = useState<'next' | 'prev'>('next')
+
+  const [selectedAlertForRequest, setSelectedAlertForRequest] = useState<TutorAlert | null>(null)
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+
+  function handleRequestAppointmentFromAlert(alert: TutorAlert) {
+    setSelectedAlertForRequest(alert)
+    setIsRequestModalOpen(true)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -263,6 +273,11 @@ export function TutorPortalHomePage() {
         <h1>Ola {getFirstName(user?.name)}!</h1>
       </header>
 
+      <TutorVaccineAlertBanner
+        alerts={alerts}
+        onRequestAppointment={handleRequestAppointmentFromAlert}
+      />
+
       <div className="tutor-home-grid">
         <section className="tutor-main-column">
           <article className="tutor-card tutor-pet-card">
@@ -384,6 +399,24 @@ export function TutorPortalHomePage() {
           </article>
         </aside>
       </div>
+
+      {isRequestModalOpen && selectedAlertForRequest && (
+        <RequestAppointmentModal
+          isOpen={isRequestModalOpen}
+          patientId={selectedAlertForRequest.patientId || selectedPetId}
+          patientName={selectedAlertForRequest.patientName}
+          vaccineName={selectedAlertForRequest.vaccineName}
+          initialCategory="VACCINATION"
+          onClose={() => {
+            setIsRequestModalOpen(false)
+            setSelectedAlertForRequest(null)
+          }}
+          onSuccess={() => {
+            setIsRequestModalOpen(false)
+            setSelectedAlertForRequest(null)
+          }}
+        />
+      )}
     </div>
   )
 }
