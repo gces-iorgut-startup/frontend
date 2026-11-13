@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Activity, BarChart3, CalendarDays, ChevronRight, Clock3, LoaderCircle, TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { DashboardService } from '../../services/dashboard.service'
+import { VaccinationAlertsWidget } from '../../components/VaccinationAlertsWidget'
 import type { AdminAppointmentsTrendPoint, AdminMetrics, RecentActivities } from '../../types'
 import '../../styles/dashboard.css'
 
@@ -285,6 +286,8 @@ export function DashboardPage() {
           </div>
         )}
       </section>
+
+      <VaccinationAlertsWidget days={7} />
 
       <section className="dashboard-activity-card">
         <div className="dashboard-activity-header">

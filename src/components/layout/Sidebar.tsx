@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, PawPrint, Calendar, Clock, LogOut, BarChart3 } from 'lucide-react'
+import { Home, PawPrint, Calendar, Clock, LogOut, BarChart3, Syringe } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../lib/authService'
 import type { Role } from '../../types'
@@ -10,6 +10,7 @@ function getNavItems(role?: Role) {
     { to: '/home', label: 'Home', icon: Home },
     { to: '/pacientes', label: 'Pacientes', icon: PawPrint },
     { to: '/agenda', label: 'Agenda', icon: Calendar },
+    { to: '/vacinas/alertas', label: 'Alertas Vacinais', icon: Syringe },
     { to: '/historico', label: 'Histórico', icon: Clock },
   ]
 

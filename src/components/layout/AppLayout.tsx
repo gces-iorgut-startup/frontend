@@ -14,6 +14,7 @@ export function AppLayout() {
         '/dashboard',
         '/pacientes',
         '/agenda',
+        '/vacinas/alertas',
         '/historico',
         '/configuracoes',
         '/historico/:recordId/pacientes/:patientId',
