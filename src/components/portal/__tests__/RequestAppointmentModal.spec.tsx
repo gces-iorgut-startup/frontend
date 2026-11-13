@@ -46,7 +46,7 @@ describe('RequestAppointmentModal — Solicitação de Agendamento pelo Tutor (E
   })
 
   it('deve submeter a solicitação de agendamento com os dados preenchidos', async () => {
-    vi.mocked(portalService.requestAppointment).mockResolvedValue({} as any)
+    vi.mocked(portalService.requestAppointment).mockResolvedValue({} as never)
     const user = userEvent.setup()
     const handleSuccess = vi.fn()
 

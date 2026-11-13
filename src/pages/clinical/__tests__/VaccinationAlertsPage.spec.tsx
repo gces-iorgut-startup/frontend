@@ -13,6 +13,14 @@ vi.mock('../../../services/vaccinationAlerts.service', () => ({
   },
 }))
 
+interface MockScheduleModalProps {
+  isOpen: boolean
+  initialTutorId?: string
+  initialPatientId?: string
+  initialCategory?: string
+  onClose: () => void
+}
+
 vi.mock('../../../components/scheduling/ScheduleModal', () => ({
   ScheduleModal: ({
     isOpen,
@@ -20,7 +28,7 @@ vi.mock('../../../components/scheduling/ScheduleModal', () => ({
     initialPatientId,
     initialCategory,
     onClose,
-  }: any) =>
+  }: MockScheduleModalProps) =>
     isOpen ? (
       <div data-testid="mock-schedule-modal">
         <span>Modal Aberto</span>

@@ -70,7 +70,7 @@ describe('TutorPortalHomePage — Banner de Vacinação e Agendamento (EVO-06)',
     vi.mocked(portalService.getDashboard).mockResolvedValue(mockDashboard)
     vi.mocked(portalService.getAlerts).mockResolvedValue(mockAlerts)
     vi.mocked(portalService.getPatientHistory).mockResolvedValue(mockHistory)
-    vi.mocked(portalService.requestAppointment).mockResolvedValue({} as any)
+    vi.mocked(portalService.requestAppointment).mockResolvedValue({} as never)
 
     const user = userEvent.setup()
 
