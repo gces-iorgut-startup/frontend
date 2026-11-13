@@ -126,6 +126,7 @@ export function TutorPortalHomePage() {
 
   const [loading, setLoading] = useState(true)
   const [loadingPet, setLoadingPet] = useState(false)
+  const [petError, setPetError] = useState('')
   const [error, setError] = useState('')
 
   const [dashboard, setDashboard] = useState<TutorDashboard | null>(null)
@@ -178,11 +179,15 @@ export function TutorPortalHomePage() {
 
     async function loadSelectedPet() {
       setLoadingPet(true)
+      setPetError('')
       try {
         const response = await portalService.getPatientHistory(selectedPetId)
         if (!cancelled) setSelectedHistory(response)
-      } catch {
-        if (!cancelled) setSelectedHistory(null)
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setSelectedHistory(null)
+          setPetError(getErrorMessage(err, 'Não foi possível carregar os dados do pet.'))
+        }
       } finally {
         if (!cancelled) setLoadingPet(false)
       }
@@ -302,7 +307,9 @@ export function TutorPortalHomePage() {
               </div>
             </div>
 
-            {loadingPet || !selectedHistory ? (
+            {petError && !loadingPet ? (
+              <div className="tutor-card-empty" role="alert">{petError}</div>
+            ) : loadingPet || !selectedHistory ? (
               <div className="tutor-card-empty">Carregando dados do pet...</div>
             ) : (
               <div

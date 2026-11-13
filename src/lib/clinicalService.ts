@@ -1,4 +1,5 @@
 import { api } from './api'
+import { toLocalDateString } from './localDate'
 import { AppointmentsService } from '../services/appointments.service'
 import type {
   Appointment,
@@ -11,13 +12,14 @@ import type {
 
 const inFlightClinicalRecordStarts = new Map<string, Promise<ClinicalRecord>>()
 
-function getUtcIsoDate(value?: string | null) {
+function getLocalIsoDate(value?: string | null) {
   if (!value) return null
 
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return null
 
-  return parsed.toISOString().slice(0, 10)
+  // Dia local, o mesmo critério da listagem de agenda (tzOffset).
+  return toLocalDateString(parsed)
 }
 
 async function getAppointmentsByDate(date: string): Promise<Appointment[]> {
@@ -28,7 +30,7 @@ async function enrichHistoryWithVetNames(items: ClinicalHistoryItem[]) {
   const dates = Array.from(
     new Set(
       items
-        .map((item) => getUtcIsoDate(item.appointment?.dateTime ?? item.createdAt))
+        .map((item) => getLocalIsoDate(item.appointment?.dateTime ?? item.createdAt))
         .filter((value): value is string => Boolean(value)),
     ),
   )
