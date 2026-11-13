@@ -308,6 +308,39 @@ export interface Vaccination {
   patient?: Pick<Patient, 'id' | 'name'>
 }
 
+// ── Vaccination Alerts (EVO-06) ───────────────────
+export type VaccinationAlertStatus = 'OVERDUE' | 'UPCOMING'
+
+export interface VaccinationAlertPatient {
+  id: string
+  name: string
+  species: string
+}
+
+export interface VaccinationAlertTutor {
+  id: string
+  fullName: string
+  phone: string
+}
+
+export interface VaccinationAlertItem {
+  id: string
+  vaccineName: string
+  doseNumber: number | null
+  nextDoseAt: string
+  status: VaccinationAlertStatus
+  daysDifference: number
+  daysOverdue?: number
+  daysUntilDue?: number
+  patient: VaccinationAlertPatient
+  tutor: VaccinationAlertTutor
+}
+
+export interface VaccinationAlertsResponse {
+  items: VaccinationAlertItem[]
+  total: number
+}
+
 export interface CreateVaccinationRequest {
   patientId: string
   vaccineName: string
@@ -483,7 +516,18 @@ export interface TutorAlert {
   type: 'overdue_vaccine' | 'upcoming_vaccine' | 'vet_recommendation'
   message: string
   patientName: string
+  patientId?: string
+  vaccineName?: string
+  doseNumber?: number
   date?: string
+  daysDifference?: number
+}
+
+export interface RequestAppointmentInput {
+  patientId: string
+  category: AppointmentCategory
+  dateTime: string
+  observation?: string
 }
 
 export interface TutorPortalClinicalRecord {

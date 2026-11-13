@@ -1,5 +1,7 @@
 import { api } from './api'
 import type {
+  Appointment,
+  RequestAppointmentInput,
   TutorAlert,
   TutorDashboard,
   TutorPortalPatientHistory,
@@ -18,6 +20,11 @@ export const portalService = {
 
   async getPatientHistory(patientId: string): Promise<TutorPortalPatientHistory> {
     const response = await api.get<TutorPortalPatientHistory>(`/portal/patients/${patientId}/history`)
+    return response.data
+  },
+
+  async requestAppointment(data: RequestAppointmentInput): Promise<Appointment> {
+    const response = await api.post<Appointment>('/portal/appointments/request', data)
     return response.data
   },
 }
