@@ -1,6 +1,19 @@
 import type { ClinicalRecord, UpdateClinicalRecordRequest } from '../types'
 
-const ROUTINE_GUIDANCE_META_PREFIX = '__IOUGURT_META__:'
+/**
+ * Formato antigo das observações do atendimento.
+ *
+ * Antes do CLI-01 não havia campo próprio: as observações eram serializadas
+ * em JSON com este prefixo e salvas dentro de `routineGuidance`, que existe
+ * para guardar orientações ao tutor. O backend agora tem a coluna
+ * `observations` e migrou os dados.
+ *
+ * Continuamos sabendo LER o formato velho — paramos só de escrevê-lo. Dois
+ * motivos: a migração deixou de propósito as linhas com JSON corrompido como
+ * estavam (para não perder o que o veterinário escreveu), e um cliente que
+ * ainda não recarregou a página pode gravar no formato antigo.
+ */
+const LEGACY_META_PREFIX = '__IOUGURT_META__:'
 
 export interface CareFormValues {
   weightKg: string
@@ -21,9 +34,9 @@ export function parseRoutineGuidance(value?: string | null) {
     }
   }
 
-  if (value.startsWith(ROUTINE_GUIDANCE_META_PREFIX)) {
+  if (value.startsWith(LEGACY_META_PREFIX)) {
     try {
-      const parsed = JSON.parse(value.slice(ROUTINE_GUIDANCE_META_PREFIX.length)) as {
+      const parsed = JSON.parse(value.slice(LEGACY_META_PREFIX.length)) as {
         observations?: string
         additionalObservations?: string
       }
@@ -46,30 +59,38 @@ export function parseRoutineGuidance(value?: string | null) {
   }
 }
 
-export function serializeRoutineGuidance(values: {
-  observations: string
-  additionalObservations: string
+/**
+ * Lê as observações do atendimento de onde elas estiverem.
+ *
+ * O campo próprio ganha; o formato legado dentro de `routineGuidance` serve
+ * de fallback. Sem esse fallback, todo atendimento gravado antes da migração
+ * do CLI-01 abriria com o campo "Observações" vazio.
+ */
+export function resolveRecordObservations(record: {
+  observations?: string | null
+  routineGuidance?: string | null
 }) {
-  const payload = {
-    observations: values.observations.trim(),
-    additionalObservations: values.additionalObservations.trim(),
-  }
+  const legacy = parseRoutineGuidance(record.routineGuidance)
+  const own = record.observations?.trim() ?? ''
 
-  return `${ROUTINE_GUIDANCE_META_PREFIX}${JSON.stringify(payload)}`
+  return {
+    observations: own || legacy.observations,
+    additionalObservations: legacy.additionalObservations,
+  }
 }
 
 export function getCareFormValues(record: ClinicalRecord): CareFormValues {
-  const routineGuidance = parseRoutineGuidance(record.routineGuidance)
+  const { observations, additionalObservations } = resolveRecordObservations(record)
 
   return {
     weightKg: record.weightKg == null ? '' : String(record.weightKg),
     clinicalNotes: record.clinicalNotes ?? '',
     breathingNotes: record.breathingNotes ?? '',
-    observations: routineGuidance.observations,
+    observations,
     examRequests: record.pendingDiagnosis ?? '',
     diagnosis: record.diagnosis ?? '',
     prescriptions: record.prescriptions ?? '',
-    additionalObservations: routineGuidance.additionalObservations,
+    additionalObservations,
   }
 }
 
@@ -102,9 +123,9 @@ export function getClinicalRecordPayload(values: CareFormValues): UpdateClinical
     pendingDiagnosis: values.examRequests.trim(),
     diagnosis: values.diagnosis.trim(),
     prescriptions: values.prescriptions.trim(),
-    routineGuidance: serializeRoutineGuidance({
-      observations: values.observations,
-      additionalObservations: values.additionalObservations,
-    }),
+    // Cada um no seu campo: observações do atendimento em `observations` e
+    // orientações ao tutor em `routineGuidance`, texto puro. Nada de JSON.
+    observations: values.observations.trim(),
+    routineGuidance: values.additionalObservations.trim(),
   }
 }
