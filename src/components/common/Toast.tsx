@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { ToastState as BudgetToastState } from './useToast'
 
 export type ToastTone = 'success' | 'error'
 
@@ -7,50 +8,69 @@ export interface ToastState {
   message: string
 }
 
+type AnyToastState = ToastState | BudgetToastState
+
 interface ToastProps {
-  toast: ToastState | null
-  onDismiss: () => void
+  toast: AnyToastState | null
+  onDismiss?: () => void
   /** 0 desliga o fechamento automático. */
   duration?: number
 }
 
+function isBudgetToast(toast: AnyToastState): toast is BudgetToastState {
+  return 'type' in toast
+}
+
 /**
- * Usa as classes `.toast-*` que já existem em `styles/index.css` — elas
- * estavam declaradas e sem nenhum consumidor.
- *
- * `role="status"` em vez de `alert` para erro de formulário não interromper
- * quem usa leitor de tela no meio do preenchimento.
+ * Suporta tanto o toast de internação (`tone` + `onDismiss` com classes `.toast-*`)
+ * quanto o toast de orçamentos (`type` gerenciado por `useToast`).
  */
 export function Toast({ toast, onDismiss, duration = 4000 }: ToastProps) {
+  const shouldAutoDismiss = Boolean(toast && !isBudgetToast(toast) && onDismiss && duration > 0)
+
   useEffect(() => {
-    if (!toast || duration <= 0) return
+    if (!shouldAutoDismiss || !onDismiss) return
 
     const timer = window.setTimeout(onDismiss, duration)
     return () => window.clearTimeout(timer)
-  }, [toast, duration, onDismiss])
+  }, [toast, shouldAutoDismiss, duration, onDismiss])
 
   if (!toast) return null
+
+  if (isBudgetToast(toast)) {
+    return (
+      <div
+        className={`budget-toast ${toast.type}`}
+        role={toast.type === 'error' ? 'alert' : 'status'}
+        data-testid="budget-toast"
+      >
+        {toast.message}
+      </div>
+    )
+  }
 
   return (
     <div className="toast-container">
       <div className={`toast toast-${toast.tone}`} role="status">
         {toast.message}
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label="Fechar aviso"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'inherit',
-            cursor: 'pointer',
-            marginLeft: 12,
-            fontSize: '1rem',
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Fechar aviso"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              marginLeft: 12,
+              fontSize: '1rem',
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
     </div>
   )
