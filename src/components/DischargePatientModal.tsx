@@ -10,6 +10,8 @@ interface DischargePatientModalProps {
   patientName: string
   onClose: () => void
   onSuccess: (hospitalization: Hospitalization) => void
+  /** Falha de API sobe para o toast da página, como a issue #58 pede. */
+  onError: (message: string) => void
 }
 
 export function DischargePatientModal({
@@ -18,14 +20,13 @@ export function DischargePatientModal({
   patientName,
   onClose,
   onSuccess,
+  onError,
 }: DischargePatientModalProps) {
   const [dischargeNotes, setDischargeNotes] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState('')
 
   async function handleSubmit() {
     setIsSaving(true)
-    setError('')
 
     try {
       const hospitalization = await hospitalizationService.discharge(
@@ -35,7 +36,9 @@ export function DischargePatientModal({
       )
       onSuccess(hospitalization)
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Não foi possível conceder a alta.'))
+      // Modal fica aberto com as orientações digitadas, para poder tentar
+      // de novo sem reescrever.
+      onError(getErrorMessage(err, 'Não foi possível conceder a alta.'))
     } finally {
       setIsSaving(false)
     }
@@ -69,15 +72,6 @@ export function DischargePatientModal({
           {patientName} deixa a internação e o leito é liberado. Depois da alta não é possível
           registrar novas aferições.
         </p>
-
-        {error && (
-          <p
-            className="patient-details-inline-error"
-            style={{ fontSize: '0.875rem', marginTop: '8px' }}
-          >
-            {error}
-          </p>
-        )}
 
         <div style={{ marginTop: '20px', marginBottom: '24px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>

@@ -10,6 +10,7 @@ import {
 } from '../../lib/hospitalizationFields'
 import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import { resolveUploadUrl } from '../../lib/uploadUrl'
+import { useNow } from '../../lib/useNow'
 import { useAuthStore } from '../../stores/authStore'
 import { AdmitPatientModal } from '../../components/AdmitPatientModal'
 import { Toast, type ToastState } from '../../components/common/Toast'
@@ -22,24 +23,38 @@ export function HospitalizationDashboard() {
 
   const [hospitalizations, setHospitalizations] = useState<Hospitalization[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [showAdmitModal, setShowAdmitModal] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
 
-  const load = useCallback(async () => {
-    if (!clinicId) return
+  // Relógio para o tempo de internação avançar sem recarregar a página.
+  const now = useNow()
 
-    setLoading(true)
-    setError('')
+  /**
+   * `silent` recarrega sem trocar a tela por "Carregando". Depois de admitir
+   * um paciente, desmontar a grade toda perderia o scroll e piscaria sem
+   * necessidade — os dados já estão na tela, só precisam ser atualizados.
+   */
+  const load = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!clinicId) return
 
-    try {
-      setHospitalizations(await hospitalizationService.listActive(clinicId))
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Não foi possível carregar as internações.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId])
+      if (silent) setRefreshing(true)
+      else setLoading(true)
+      setError('')
+
+      try {
+        setHospitalizations(await hospitalizationService.listActive(clinicId))
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Não foi possível carregar as internações.'))
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [clinicId]
+  )
 
   useEffect(() => {
     void load()
@@ -80,12 +95,12 @@ export function HospitalizationDashboard() {
           <button
             type="button"
             className="ghost"
-            onClick={() => void load()}
-            disabled={loading}
+            onClick={() => void load({ silent: true })}
+            disabled={loading || refreshing}
             aria-label="Atualizar painel"
           >
             <RefreshCw size={16} />
-            Atualizar
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
           </button>
           <button
             type="button"
@@ -163,7 +178,9 @@ export function HospitalizationDashboard() {
                   </div>
                   <div>
                     <dt>Internado há</dt>
-                    <dd>{formatHospitalizationDuration(item.admittedAt, item.dischargedAt)}</dd>
+                    <dd>
+                      {formatHospitalizationDuration(item.admittedAt, item.dischargedAt, now)}
+                    </dd>
                   </div>
                 </dl>
 
@@ -187,8 +204,9 @@ export function HospitalizationDashboard() {
                 hospitalization.bedIdentifier
               }.`,
             })
-            void load()
+            void load({ silent: true })
           }}
+          onError={(message) => setToast({ tone: 'error', message })}
         />
       )}
 

@@ -10,6 +10,7 @@ import type { Hospitalization, User } from '../../../types'
 vi.mock('../../../lib/hospitalizationService', () => ({
   hospitalizationService: {
     listActive: vi.fn(),
+    admitPatient: vi.fn(),
   },
 }))
 
@@ -202,5 +203,29 @@ describe('HospitalizationDashboard — cards de internação (EVO-05)', () => {
       screen.getByText(/Não foi possível identificar a clínica da sua sessão/)
     ).toBeInTheDocument()
     expect(mockedService.listActive).not.toHaveBeenCalled()
+  })
+
+  it('mostra o tempo de internação a partir da entrada', async () => {
+    mockedService.listActive.mockResolvedValue([hospitalizationFixture()])
+
+    renderDashboard()
+
+    await screen.findByText('Rex')
+    // O valor exato depende do relógio; o que importa é não mostrar travessão.
+    expect(screen.getByText('Internado há').nextElementSibling?.textContent).not.toBe('—')
+  })
+
+  it('não troca a tela por "Carregando" ao atualizar', async () => {
+    const user = userEvent.setup()
+    mockedService.listActive.mockResolvedValue([hospitalizationFixture()])
+
+    renderDashboard()
+    await screen.findByText('Rex')
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar painel' }))
+
+    // O card continua montado durante a recarga: sem isso o scroll se perde e
+    // a grade pisca a cada ação.
+    expect(screen.getByText('Rex')).toBeInTheDocument()
   })
 })

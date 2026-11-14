@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, LoaderCircle, LogOut, Stethoscope } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, HeartPulse, LoaderCircle, LogOut, Stethoscope } from 'lucide-react'
 import { hospitalizationService } from '../../lib/hospitalizationService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import {
@@ -10,6 +10,7 @@ import {
   getHospitalizationStatusLabel,
 } from '../../lib/hospitalizationFields'
 import { getPatientSpeciesLabel } from '../../lib/patientFields'
+import { useNow } from '../../lib/useNow'
 import { useAuthStore } from '../../stores/authStore'
 import { HospitalizationEvolutionForm } from '../../components/HospitalizationEvolutionForm'
 import { DischargePatientModal } from '../../components/DischargePatientModal'
@@ -41,28 +42,67 @@ export function HospitalizationDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showDischargeModal, setShowDischargeModal] = useState(false)
+  const [togglingStatus, setTogglingStatus] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
 
-  const load = useCallback(async () => {
-    if (!clinicId || !id) return
+  // Hook antes de qualquer early return. O timer para depois da alta, porque
+  // aí o tempo de internação é fixo.
+  const now = useNow(60_000, details?.status !== 'DISCHARGED')
 
-    setLoading(true)
-    setError('')
+  /**
+   * `silent` recarrega sem desmontar a página. Sem isso, cada aferição
+   * registrada trocava a tela inteira por "Carregando", perdendo o scroll da
+   * timeline que a pessoa estava lendo.
+   */
+  const load = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!clinicId || !id) return
 
-    try {
-      setDetails(await hospitalizationService.getDetails(clinicId, id))
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Não foi possível carregar a internação.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId, id])
+      if (!silent) setLoading(true)
+      setError('')
+
+      try {
+        setDetails(await hospitalizationService.getDetails(clinicId, id))
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Não foi possível carregar a internação.'))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [clinicId, id]
+  )
 
   useEffect(() => {
     void load()
   }, [load])
 
   const dismissToast = useCallback(() => setToast(null), [])
+
+  async function handleToggleCritical() {
+    if (!clinicId || !id || !details) return
+
+    const next = details.status === 'CRITICAL' ? 'ADMITTED' : 'CRITICAL'
+    setTogglingStatus(true)
+
+    try {
+      await hospitalizationService.updateStatus(clinicId, id, next)
+      setToast({
+        tone: 'success',
+        message:
+          next === 'CRITICAL'
+            ? `${details.patient?.name ?? 'Paciente'} marcado como crítico.`
+            : `${details.patient?.name ?? 'Paciente'} não está mais em estado crítico.`,
+      })
+      await load({ silent: true })
+    } catch (err: unknown) {
+      setToast({
+        tone: 'error',
+        message: getErrorMessage(err, 'Não foi possível alterar o status.'),
+      })
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -123,7 +163,7 @@ export function HospitalizationDetailsPage() {
         </div>
         <div>
           <dt>{isDischarged ? 'Permaneceu' : 'Internado há'}</dt>
-          <dd>{formatHospitalizationDuration(details.admittedAt, details.dischargedAt)}</dd>
+          <dd>{formatHospitalizationDuration(details.admittedAt, details.dischargedAt, now)}</dd>
         </div>
         <div>
           <dt>Admitido por</dt>
@@ -155,7 +195,7 @@ export function HospitalizationDetailsPage() {
           hospitalizationId={id}
           onSuccess={() => {
             setToast({ tone: 'success', message: 'Aferição registrada.' })
-            void load()
+            void load({ silent: true })
           }}
           onError={(message) => setToast({ tone: 'error', message })}
         />
@@ -197,8 +237,28 @@ export function HospitalizationDetailsPage() {
         <div className="hospitalization-discharge-bar">
           <button
             type="button"
+            className="ghost"
+            onClick={() => void handleToggleCritical()}
+            disabled={togglingStatus}
+          >
+            {details.status === 'CRITICAL' ? (
+              <>
+                <HeartPulse size={16} />
+                Marcar como estável
+              </>
+            ) : (
+              <>
+                <AlertTriangle size={16} />
+                Marcar como crítico
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
             className="confirm save"
             onClick={() => setShowDischargeModal(true)}
+            disabled={togglingStatus}
           >
             <LogOut size={16} />
             Conceder alta médica
@@ -215,8 +275,9 @@ export function HospitalizationDetailsPage() {
           onSuccess={() => {
             setShowDischargeModal(false)
             setToast({ tone: 'success', message: `Alta concedida para ${patientName}.` })
-            void load()
+            void load({ silent: true })
           }}
+          onError={(message) => setToast({ tone: 'error', message })}
         />
       )}
 

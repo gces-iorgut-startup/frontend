@@ -613,10 +613,15 @@ export interface HospitalizationDetails extends Hospitalization {
   evolutions: HospitalizationEvolution[]
 }
 
+/** Status que mantêm o leito ocupado. A alta tem rota própria no backend. */
+export type OpenHospitalizationStatus = Exclude<HospitalizationStatus, 'DISCHARGED'>
+
 export interface AdmitPatientRequest {
   patientId: string
   bedIdentifier: string
   reason: string
+  /** Em branco, o backend usa ADMITTED. */
+  status?: OpenHospitalizationStatus
 }
 
 export interface AddHospitalizationEvolutionRequest {

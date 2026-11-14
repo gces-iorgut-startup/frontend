@@ -41,12 +41,71 @@
   flex-wrap: wrap;
 }
 
+/*
+ * As classes .confirm/.ghost do projeto só têm estilo dentro de
+ * `.patient-edit-modal-actions`. Fora do modal elas renderizam como texto
+ * puro — foi o que apareceu ao subir a tela. Aqui damos aparência de botão
+ * aos mesmos nomes, mantendo as cores do design system.
+ */
 .hospitalization-header-actions button,
 .hospitalization-discharge-bar button,
+.hospitalization-evolution-form button,
 .hospitalization-page > button.ghost {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hospitalization-header-actions button.confirm.save,
+.hospitalization-discharge-bar button.confirm.save,
+.hospitalization-evolution-form button.confirm.save {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.hospitalization-header-actions button.confirm.save:hover:not(:disabled),
+.hospitalization-discharge-bar button.confirm.save:hover:not(:disabled),
+.hospitalization-evolution-form button.confirm.save:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.hospitalization-header-actions button.ghost,
+.hospitalization-discharge-bar button.ghost,
+.hospitalization-page > button.ghost {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.hospitalization-header-actions button.ghost:hover:not(:disabled),
+.hospitalization-discharge-bar button.ghost:hover:not(:disabled),
+.hospitalization-page > button.ghost:hover:not(:disabled) {
+  background: var(--color-bg-page);
+  border-color: var(--gray-300);
+}
+
+/* O "voltar" é navegação, não ação: alinhado à esquerda e discreto. */
+.hospitalization-page > button.ghost {
+  align-self: flex-start;
+}
+
+.hospitalization-header-actions button:disabled,
+.hospitalization-discharge-bar button:disabled,
+.hospitalization-evolution-form button:disabled,
+.hospitalization-page > button.ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ── Estados ──────────────────────────────────────── */
@@ -410,6 +469,8 @@
 .hospitalization-discharge-bar {
   display: flex;
   justify-content: flex-end;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 /* ── Mobile ───────────────────────────────────────── */

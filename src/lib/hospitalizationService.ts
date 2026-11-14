@@ -5,6 +5,7 @@ import type {
   Hospitalization,
   HospitalizationDetails,
   HospitalizationEvolution,
+  OpenHospitalizationStatus,
 } from '../types'
 
 /**
@@ -53,7 +54,21 @@ export const hospitalizationService = {
       patientId: input.patientId,
       bedIdentifier: input.bedIdentifier.trim(),
       reason: input.reason.trim(),
+      // Chave omitida quando não informado: o backend assume ADMITTED.
+      ...(input.status ? { status: input.status } : {}),
     })
+    return response.data
+  },
+
+  async updateStatus(
+    clinicId: string,
+    hospitalizationId: string,
+    status: OpenHospitalizationStatus
+  ): Promise<Hospitalization> {
+    const response = await api.patch<Hospitalization>(
+      `${basePath(clinicId)}/${hospitalizationId}/status`,
+      { status }
+    )
     return response.data
   },
 

@@ -157,3 +157,56 @@ describe('discharge', () => {
     expect(payload).toEqual({})
   })
 })
+
+describe('admitPatient — status', () => {
+  it('omite a chave quando nao informado', async () => {
+    // Em branco, o backend assume ADMITTED. Mandar undefined explicito faria
+    // o Zod receber a chave e reclamar.
+    mockedApi.post.mockResolvedValue({ data: {} })
+
+    await hospitalizationService.admitPatient(CLINIC_ID, {
+      patientId: 'patient-1',
+      bedIdentifier: 'Baia 03',
+      reason: 'Observacao',
+    })
+
+    const [, payload] = mockedApi.post.mock.calls[0]
+    expect('status' in payload).toBe(false)
+  })
+
+  it('envia CRITICAL quando a admissao e critica', async () => {
+    mockedApi.post.mockResolvedValue({ data: {} })
+
+    await hospitalizationService.admitPatient(CLINIC_ID, {
+      patientId: 'patient-1',
+      bedIdentifier: 'UTI 01',
+      reason: 'Choque',
+      status: 'CRITICAL',
+    })
+
+    const [, payload] = mockedApi.post.mock.calls[0]
+    expect(payload.status).toBe('CRITICAL')
+  })
+})
+
+describe('updateStatus', () => {
+  it('chama a rota de status com o valor novo', async () => {
+    mockedApi.patch.mockResolvedValue({ data: {} })
+
+    await hospitalizationService.updateStatus(CLINIC_ID, HOSPITALIZATION_ID, 'CRITICAL')
+
+    expect(mockedApi.patch).toHaveBeenCalledWith(
+      '/clinics/clinic-1/hospitalizations/hosp-1/status',
+      { status: 'CRITICAL' }
+    )
+  })
+
+  it('tambem volta para ADMITTED', async () => {
+    mockedApi.patch.mockResolvedValue({ data: {} })
+
+    await hospitalizationService.updateStatus(CLINIC_ID, HOSPITALIZATION_ID, 'ADMITTED')
+
+    const [, payload] = mockedApi.patch.mock.calls[0]
+    expect(payload.status).toBe('ADMITTED')
+  })
+})

@@ -12,6 +12,12 @@ interface AdmitPatientModalProps {
   admittedPatientIds: string[]
   onClose: () => void
   onSuccess: (hospitalization: Hospitalization) => void
+  /**
+   * Falha de API sobe para o toast da página, como a issue #58 pede. O erro de
+   * validação continua inline, porque é sobre o campo que a pessoa acabou de
+   * preencher e precisa aparecer ao lado dele.
+   */
+  onError: (message: string) => void
 }
 
 export function AdmitPatientModal({
@@ -19,12 +25,14 @@ export function AdmitPatientModal({
   admittedPatientIds,
   onClose,
   onSuccess,
+  onError,
 }: AdmitPatientModalProps) {
   const [patients, setPatients] = useState<Patient[]>([])
   const [loadingPatients, setLoadingPatients] = useState(true)
   const [patientId, setPatientId] = useState('')
   const [bedIdentifier, setBedIdentifier] = useState('')
   const [reason, setReason] = useState('')
+  const [critical, setCritical] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -73,10 +81,13 @@ export function AdmitPatientModal({
         patientId,
         bedIdentifier,
         reason,
+        status: critical ? 'CRITICAL' : undefined,
       })
       onSuccess(hospitalization)
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Não foi possível admitir o paciente.'))
+      // O modal fica aberto com o que foi digitado, para a pessoa poder tentar
+      // de novo sem reescrever tudo.
+      onError(getErrorMessage(err, 'Não foi possível admitir o paciente.'))
     } finally {
       setIsSaving(false)
     }
@@ -189,6 +200,25 @@ export function AdmitPatientModal({
                 resize: 'vertical',
               }}
             />
+          </label>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              textAlign: 'left',
+              fontSize: '0.875rem',
+              color: '#475569',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={critical}
+              onChange={(event) => setCritical(event.target.checked)}
+              disabled={isSaving}
+            />
+            Admitir já em estado crítico
           </label>
         </div>
 
