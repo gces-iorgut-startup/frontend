@@ -148,4 +148,26 @@ describe('NewBudgetModal', () => {
     expect(onSaved).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it('fecha direto com Esc quando não há alterações e pede confirmação quando há rascunho digitado', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderModal()
+    await screen.findByText('Maria Silva')
+
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    onClose.mockClear()
+    await user.type(screen.getByLabelText('Descrição do item 1'), 'Hemograma')
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByText(/Descartar as alterações não salvas/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Continuar editando' }))
+    expect(onClose).not.toHaveBeenCalled()
+
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Descartar alterações' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

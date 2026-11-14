@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, Printer } from 'lucide-react'
 import { BudgetsService } from '../../services/budgets.service'
 import { getErrorMessage } from '../../lib/errorMessage'
@@ -22,34 +22,46 @@ export function PatientBudgetsSection({ patientId }: PatientBudgetsSectionProps)
   const clinicId = useAuthStore((s) => s.user?.clinicId)
   const { toast, showToast } = useToast()
   const [budgets, setBudgets] = useState<Budget[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [openBudgetId, setOpenBudgetId] = useState<string | null>(null)
+  const requestSeqRef = useRef(0)
 
-  const load = useCallback(async () => {
-    if (!clinicId) {
-      setError('Clínica não identificada.')
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await BudgetsService.listBudgets(clinicId, {
-        patientId,
-        limit: SECTION_PAGE_SIZE,
-      })
-      setBudgets(response.budgets)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Não foi possível carregar os orçamentos.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId, patientId])
+  const load = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      const seq = ++requestSeqRef.current
+      if (!clinicId) {
+        setError('Clínica não identificada.')
+        setLoading(false)
+        return
+      }
+      if (!silent) setLoading(true)
+      setError(null)
+      try {
+        const response = await BudgetsService.listBudgets(clinicId, {
+          patientId,
+          limit: SECTION_PAGE_SIZE,
+        })
+        if (seq !== requestSeqRef.current) return
+        setBudgets(response.budgets)
+        setTotal(response.total)
+      } catch (err) {
+        if (seq !== requestSeqRef.current) return
+        setError(getErrorMessage(err, 'Não foi possível carregar os orçamentos.'))
+      } finally {
+        if (seq === requestSeqRef.current) setLoading(false)
+      }
+    },
+    [clinicId, patientId],
+  )
 
   useEffect(() => {
     void load()
+    return () => {
+      requestSeqRef.current += 1
+    }
   }, [load])
 
   return (
@@ -109,6 +121,12 @@ export function PatientBudgetsSection({ patientId }: PatientBudgetsSectionProps)
         </div>
       )}
 
+      {!loading && !error && total > budgets.length && (
+        <p className="budget-hint">
+          Exibindo os {budgets.length} orçamentos mais recentes de {total}.
+        </p>
+      )}
+
       {creating && (
         <NewBudgetModal
           defaultPatientId={patientId}
@@ -116,7 +134,7 @@ export function PatientBudgetsSection({ patientId }: PatientBudgetsSectionProps)
           onSaved={() => {
             setCreating(false)
             showToast('Orçamento criado com sucesso.', 'success')
-            void load()
+            void load({ silent: true })
           }}
         />
       )}
@@ -125,7 +143,7 @@ export function PatientBudgetsSection({ patientId }: PatientBudgetsSectionProps)
         <BudgetDetailsPrintModal
           budgetId={openBudgetId}
           onClose={() => setOpenBudgetId(null)}
-          onChanged={() => void load()}
+          onChanged={() => void load({ silent: true })}
         />
       )}
 

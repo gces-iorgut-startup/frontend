@@ -337,16 +337,25 @@
   gap: 0;
   border-bottom: 1px solid var(--gray-200);
   margin: var(--space-xl) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.patient-details-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .patient-details-tab {
-  padding: 14px 30px;
+  padding: 14px 24px;
   border: 1px solid var(--gray-200);
   border-bottom: none;
   border-radius: 14px 14px 0 0;
   background: #fff;
   color: var(--gray-500);
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   position: relative;
   top: 1px;
   cursor: pointer;

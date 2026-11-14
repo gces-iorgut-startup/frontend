@@ -116,18 +116,90 @@ describe('BudgetsListPage', () => {
     expect(await screen.findByText('Nenhum orçamento encontrado com os filtros atuais.')).toBeInTheDocument()
   })
 
-  it('aprova um orçamento pendente pela ação rápida e mostra toast de sucesso', async () => {
+  it('exige confirmação antes de aprovar pela ação rápida e aprova ao confirmar', async () => {
     const user = userEvent.setup()
     vi.mocked(BudgetsService.updateBudgetStatus).mockResolvedValue(makeBudget({ status: 'APPROVED' }))
     render(<BudgetsListPage />)
     await screen.findByText('Rex')
 
     await user.click(screen.getByRole('button', { name: /Aprovar/ }))
+    expect(BudgetsService.updateBudgetStatus).not.toHaveBeenCalled()
+    expect(screen.getByText('Aprovar este orçamento?')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(BudgetsService.updateBudgetStatus).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /Aprovar/ }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar aprovação' }))
 
     await waitFor(() =>
       expect(BudgetsService.updateBudgetStatus).toHaveBeenCalledWith('clinic-1', 'b1', 'APPROVED'),
     )
     expect(await screen.findByText('Status do orçamento atualizado.')).toBeInTheDocument()
+  })
+
+  it('ajusta a página para a última válida quando aprovar esvazia a página atual', async () => {
+    const user = userEvent.setup()
+    const page1Items = Array.from({ length: 10 }, (_, idx) =>
+      makeBudget({ id: `b-${idx}`, patient: { id: `p-${idx}`, name: `Pet ${idx}`, species: 'CANINE', breed: null } }),
+    )
+    const page2Item = makeBudget({
+      id: 'b-last',
+      patient: { id: 'p-last', name: 'Luna', species: 'FELINE', breed: null },
+    })
+
+    vi.mocked(BudgetsService.listBudgets).mockImplementation(async (_clinicId, params) => {
+      if (params?.page === 2) return { budgets: [page2Item], total: 11 }
+      return { budgets: page1Items, total: 11 }
+    })
+    vi.mocked(BudgetsService.updateBudgetStatus).mockResolvedValue(makeBudget({ id: 'b-last', status: 'APPROVED' }))
+
+    render(<BudgetsListPage />)
+    await screen.findByText('Pet 0')
+
+    await user.click(screen.getByRole('button', { name: '2' }))
+    await screen.findByText('Luna')
+
+    vi.mocked(BudgetsService.listBudgets).mockImplementation(async (_clinicId, params) => {
+      if (params?.page === 2) return { budgets: [], total: 10 }
+      return { budgets: page1Items, total: 10 }
+    })
+
+    await user.click(screen.getByRole('button', { name: /Aprovar/ }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar aprovação' }))
+
+    expect(await screen.findByText('Pet 0')).toBeInTheDocument()
+    expect(screen.getByText('Exibindo de 1 a 10 de 10 resultados')).toBeInTheDocument()
+  })
+
+  it('descarta resposta atrasada quando o filtro muda antes da primeira concluir', async () => {
+    const user = userEvent.setup()
+    let resolveFirst!: (value: { budgets: Budget[]; total: number }) => void
+    const firstPromise = new Promise<{ budgets: Budget[]; total: number }>((resolve) => {
+      resolveFirst = resolve
+    })
+
+    vi.mocked(BudgetsService.listBudgets)
+      .mockReturnValueOnce(firstPromise)
+      .mockResolvedValueOnce({
+        budgets: [makeBudget({ id: 'b-new', patient: { id: 'p2', name: 'Thor', species: 'CANINE', breed: null } })],
+        total: 1,
+      })
+
+    render(<BudgetsListPage />)
+    await user.selectOptions(screen.getByLabelText('Filtrar por status'), 'APPROVED')
+
+    expect(await screen.findByText('Thor')).toBeInTheDocument()
+
+    resolveFirst({
+      budgets: [makeBudget({ id: 'b-old', patient: { id: 'p1', name: 'Antigo', species: 'CANINE', breed: null } })],
+      total: 1,
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Antigo')).not.toBeInTheDocument()
+      expect(screen.getByText('Thor')).toBeInTheDocument()
+    })
   })
 
   it('mostra erro com nova tentativa quando a listagem falha', async () => {

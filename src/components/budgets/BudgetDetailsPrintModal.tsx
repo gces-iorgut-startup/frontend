@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, X } from 'lucide-react'
 import { BudgetsService } from '../../services/budgets.service'
@@ -6,10 +6,15 @@ import { clinicService } from '../../lib/clinicService'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { formatCurrency } from '../../lib/currency'
 import { isBudgetLocked } from '../../lib/budgetStatus'
+import { getPatientSpeciesLabel } from '../../lib/patientFields'
 import { useAuthStore } from '../../stores/authStore'
 import { useToast } from '../common/useToast'
 import { Toast } from '../common/Toast'
 import { BudgetStatusBadge } from './BudgetStatusBadge'
+import {
+  ConfirmBudgetStatusDialog,
+  type ConfirmableBudgetStatus,
+} from './ConfirmBudgetStatusDialog'
 import { formatCivilDate } from '../chronicConditionDates'
 import type { Budget, BudgetStatus, Clinic } from '../../types'
 import '../../styles/budgets.css'
@@ -37,11 +42,15 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
   const { toast, showToast } = useToast()
   const [budget, setBudget] = useState<Budget | null>(null)
   const [clinic, setClinic] = useState<Clinic | null>(null)
+  const [clinicLoadFailed, setClinicLoadFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<ConfirmableBudgetStatus | null>(null)
+  const requestSeqRef = useRef(0)
 
   const load = useCallback(async () => {
+    const seq = ++requestSeqRef.current
     if (!clinicId) {
       setError('Clínica não identificada.')
       setLoading(false)
@@ -49,31 +58,51 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
     }
     setLoading(true)
     setError(null)
+    setClinicLoadFailed(false)
     try {
-      const [details, myClinic] = await Promise.all([
+      const [detailsResult, clinicResult] = await Promise.allSettled([
         BudgetsService.getBudgetDetails(clinicId, budgetId),
-        clinicService.getMyClinic().catch(() => null),
+        clinicService.getMyClinic(),
       ])
-      setBudget(details)
-      setClinic(myClinic)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Não foi possível carregar o orçamento.'))
+      if (seq !== requestSeqRef.current) return
+      if (detailsResult.status === 'rejected') {
+        setError(getErrorMessage(detailsResult.reason, 'Não foi possível carregar o orçamento.'))
+        return
+      }
+      setBudget(detailsResult.value)
+      if (clinicResult.status === 'fulfilled') {
+        setClinic(clinicResult.value)
+        setClinicLoadFailed(false)
+      } else {
+        setClinic(null)
+        setClinicLoadFailed(true)
+      }
     } finally {
-      setLoading(false)
+      if (seq === requestSeqRef.current) setLoading(false)
     }
   }, [budgetId, clinicId])
 
   useEffect(() => {
     void load()
+    return () => {
+      requestSeqRef.current += 1
+    }
   }, [load])
 
   useEffect(() => {
+    document.body.classList.add('budget-print-open')
+    return () => {
+      document.body.classList.remove('budget-print-open')
+    }
+  }, [])
+
+  useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape' && !pendingStatus && !updating) onClose()
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [onClose])
+  }, [onClose, pendingStatus, updating])
 
   const changeStatus = async (status: BudgetStatus) => {
     if (!clinicId || !budget) return
@@ -86,6 +115,7 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
     } catch (err) {
       showToast(getErrorMessage(err, 'Não foi possível atualizar o status.'), 'error')
     } finally {
+      setPendingStatus(null)
       setUpdating(false)
     }
   }
@@ -107,6 +137,14 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
 
         {loading && <p className="budget-hint no-print">Carregando orçamento...</p>}
         {error && <p className="budget-error no-print" role="alert">{error}</p>}
+        {clinicLoadFailed && !error && (
+          <div className="budget-error-box no-print" role="alert">
+            <p>Não foi possível carregar os dados da clínica para o cabeçalho. A impressão usará o cabeçalho padrão.</p>
+            <button type="button" className="budget-link-button" onClick={() => void load()}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
 
         {budget && (
           <article className="budget-print-sheet">
@@ -138,7 +176,7 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
               <div>
                 <h3>Paciente</h3>
                 <p>{budget.patient?.name ?? '—'}</p>
-                {budget.patient?.species && <p>Espécie: {budget.patient.species}</p>}
+                {budget.patient?.species && <p>Espécie: {getPatientSpeciesLabel(budget.patient.species)}</p>}
                 {budget.patient?.breed && <p>Raça: {budget.patient.breed}</p>}
               </div>
             </section>
@@ -198,7 +236,13 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
                       key={action.status}
                       type="button"
                       className={`budget-button${action.status === 'APPROVED' ? ' primary' : ''}`}
-                      onClick={() => void changeStatus(action.status)}
+                      onClick={() => {
+                        if (action.status === 'APPROVED' || action.status === 'REJECTED') {
+                          setPendingStatus(action.status)
+                          return
+                        }
+                        void changeStatus(action.status)
+                      }}
                       disabled={updating}
                     >
                       {action.label}
@@ -208,6 +252,15 @@ export function BudgetDetailsPrintModal({ budgetId, onClose, onChanged }: Budget
               )
             )}
           </article>
+        )}
+
+        {pendingStatus && (
+          <ConfirmBudgetStatusDialog
+            status={pendingStatus}
+            submitting={updating}
+            onCancel={() => setPendingStatus(null)}
+            onConfirm={() => void changeStatus(pendingStatus)}
+          />
         )}
 
         <Toast toast={toast} />

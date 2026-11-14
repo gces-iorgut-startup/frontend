@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { BudgetsService } from '../../services/budgets.service'
 import { PatientsService } from '../../services/patients.service'
@@ -44,6 +44,27 @@ export function NewBudgetModal({ defaultPatientId, onClose, onSaved }: NewBudget
   const [notes, setNotes] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const discardDescId = useId()
+
+  const isDirty =
+    (defaultPatientId ? patient !== null && patient.id !== defaultPatientId : patient !== null) ||
+    items.length > 1 ||
+    items[0].description !== '' ||
+    items[0].quantity !== '1' ||
+    items[0].unitPrice !== '' ||
+    discountValue !== '' ||
+    validUntil !== '' ||
+    notes !== ''
+
+  const requestClose = useCallback(() => {
+    if (saving) return
+    if (isDirty) {
+      setConfirmingDiscard(true)
+      return
+    }
+    onClose()
+  }, [isDirty, onClose, saving])
 
   useEffect(() => {
     if (!defaultPatientId) return undefined
@@ -62,11 +83,16 @@ export function NewBudgetModal({ defaultPatientId, onClose, onSaved }: NewBudget
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !saving) onClose()
+      if (event.key !== 'Escape' || saving) return
+      if (confirmingDiscard) {
+        setConfirmingDiscard(false)
+        return
+      }
+      requestClose()
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [onClose, saving])
+  }, [confirmingDiscard, requestClose, saving])
 
   const subtotal = itemsSubtotal(items)
   const discount = discountAmount(subtotal, discountType, discountValue)
@@ -133,7 +159,7 @@ export function NewBudgetModal({ defaultPatientId, onClose, onSaved }: NewBudget
       <div className="budget-modal" role="dialog" aria-modal="true" aria-labelledby="new-budget-title">
         <header className="budget-modal-header">
           <h2 id="new-budget-title">Novo Orçamento</h2>
-          <button type="button" className="budget-icon-button" aria-label="Fechar" onClick={onClose} disabled={saving}>
+          <button type="button" className="budget-icon-button" aria-label="Fechar" onClick={requestClose} disabled={saving}>
             <X size={18} />
           </button>
         </header>
@@ -282,8 +308,30 @@ export function NewBudgetModal({ defaultPatientId, onClose, onSaved }: NewBudget
           {formError && <p className="budget-error" role="alert">{formError}</p>}
         </div>
 
+        {confirmingDiscard && (
+          <div className="budget-discard-bar" role="region" aria-label="Confirmar descarte">
+            <p id={discardDescId}>Descartar as alterações não salvas deste orçamento?</p>
+            <button
+              type="button"
+              className="budget-button ghost"
+              onClick={() => setConfirmingDiscard(false)}
+              autoFocus
+            >
+              Continuar editando
+            </button>
+            <button
+              type="button"
+              className="budget-button danger"
+              aria-describedby={discardDescId}
+              onClick={onClose}
+            >
+              Descartar alterações
+            </button>
+          </div>
+        )}
+
         <footer className="budget-modal-footer">
-          <button type="button" className="budget-button ghost" onClick={onClose} disabled={saving}>
+          <button type="button" className="budget-button ghost" onClick={requestClose} disabled={saving}>
             Cancelar
           </button>
           <button type="button" className="budget-button" onClick={() => void submit('DRAFT')} disabled={saving}>
