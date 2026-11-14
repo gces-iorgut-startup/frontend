@@ -25,5 +25,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Diagnósticos de falha dos testes E2E
+# Diagnósticos de falha dos testes E2E e Smoke Playwright
 e2e-artifacts
+playwright-smoke-report
+test-results
