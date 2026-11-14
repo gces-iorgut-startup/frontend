@@ -563,6 +563,75 @@ export interface CreateTutorAccountResponse {
   temporaryPassword: string
 }
 
+// ── Hospitalizations (EVO-05) ─────────────────────
+export type HospitalizationStatus = 'ADMITTED' | 'CRITICAL' | 'DISCHARGED'
+
+/** Resumo do veterinário que o backend embute na internação e na evolução. */
+export interface HospitalizationVet {
+  id: string
+  name: string
+}
+
+export interface HospitalizationPatientCard {
+  id: string
+  name: string
+  species: string
+  photoUrl: string | null
+}
+
+export interface Hospitalization {
+  id: string
+  clinicId: string
+  patientId: string
+  admittedByVetId: string
+  bedIdentifier: string
+  reason: string
+  status: HospitalizationStatus
+  admittedAt: string
+  dischargedAt: string | null
+  dischargeNotes: string | null
+  createdAt: string
+  updatedAt: string
+  patient?: HospitalizationPatientCard
+  admittedByVet?: HospitalizationVet
+}
+
+export interface HospitalizationEvolution {
+  id: string
+  hospitalizationId: string
+  recordedByVetId: string
+  temperature: number | null
+  heartRate: number | null
+  respiratoryRate: number | null
+  mucousMembranes: string | null
+  notes: string
+  recordedAt: string
+  recordedByVet?: HospitalizationVet
+}
+
+export interface HospitalizationDetails extends Hospitalization {
+  evolutions: HospitalizationEvolution[]
+}
+
+/** Status que mantêm o leito ocupado. A alta tem rota própria no backend. */
+export type OpenHospitalizationStatus = Exclude<HospitalizationStatus, 'DISCHARGED'>
+
+export interface AdmitPatientRequest {
+  patientId: string
+  bedIdentifier: string
+  reason: string
+  /** Em branco, o backend usa ADMITTED. */
+  status?: OpenHospitalizationStatus
+}
+
+export interface AddHospitalizationEvolutionRequest {
+  temperature?: number
+  heartRate?: number
+  respiratoryRate?: number
+  mucousMembranes?: string
+  notes: string
+}
+
 // ── Paginated ─────────────────────────────────────
 export interface PaginatedResponse<T> {
   items?: T[]
