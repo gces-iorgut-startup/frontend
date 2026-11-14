@@ -61,31 +61,63 @@ describe('BudgetDetailsPrintModal', () => {
     })
   })
 
-  it('exibe clínica, tutor, paciente, itens e totais do orçamento', async () => {
-    renderModal(makeBudget('PENDING'))
+  it('exibe clínica, tutor, paciente com espécie traduzida, itens e totais do orçamento', async () => {
+    const { unmount } = (() => {
+      vi.mocked(BudgetsService.getBudgetDetails).mockResolvedValue(makeBudget('PENDING'))
+      vi.mocked(clinicService.getMyClinic).mockResolvedValue({
+        id: 'clinic-1',
+        name: 'Clínica Patas',
+        phone: '6133334444',
+        address: 'Rua A, 10',
+        code: 'PATAS-01',
+      } as never)
+      return render(<BudgetDetailsPrintModal budgetId="b1234567-aaaa" onClose={vi.fn()} />)
+    })()
 
     expect(await screen.findByRole('heading', { name: 'Clínica Patas' })).toBeInTheDocument()
+    expect(document.body).toHaveClass('budget-print-open')
     expect(screen.getByText('Maria Silva')).toBeInTheDocument()
     expect(screen.getByText('CPF: 52998224725')).toBeInTheDocument()
     expect(screen.getByText('Rex')).toBeInTheDocument()
+    expect(screen.getByText('Espécie: Canino')).toBeInTheDocument()
     expect(screen.getByText('Vacina V10')).toBeInTheDocument()
     expect(screen.getByTestId('print-total')).toHaveTextContent('90,00')
     expect(screen.getByText('Pagamento em duas vezes')).toBeInTheDocument()
+
+    unmount()
+    expect(document.body).not.toHaveClass('budget-print-open')
   })
 
-  it('aprova um orçamento pendente pela ação rápida', async () => {
+  it('exige confirmação antes de aprovar ou recusar no modal', async () => {
     const user = userEvent.setup()
     const approved = { ...makeBudget('PENDING'), status: 'APPROVED' as const }
     vi.mocked(BudgetsService.updateBudgetStatus).mockResolvedValue(approved)
     const { onChanged } = renderModal(makeBudget('PENDING'))
 
     await user.click(await screen.findByRole('button', { name: 'Marcar como Aprovado' }))
+    expect(BudgetsService.updateBudgetStatus).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(BudgetsService.updateBudgetStatus).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Marcar como Aprovado' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar aprovação' }))
 
     await waitFor(() =>
       expect(BudgetsService.updateBudgetStatus).toHaveBeenCalledWith('clinic-1', 'b1234567-aaaa', 'APPROVED'),
     )
     expect(onChanged).toHaveBeenCalledWith(approved)
     expect(await screen.findByText('Status do orçamento atualizado.')).toBeInTheDocument()
+  })
+
+  it('avisa quando getMyClinic falha sem engolir o erro', async () => {
+    vi.mocked(BudgetsService.getBudgetDetails).mockResolvedValue(makeBudget('PENDING'))
+    vi.mocked(clinicService.getMyClinic).mockRejectedValue(new Error('Falha clínica'))
+    render(<BudgetDetailsPrintModal budgetId="b1234567-aaaa" onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Não foi possível carregar os dados da clínica/)
+    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Clínica' })).toBeInTheDocument()
   })
 
   it('não oferece ações de status para orçamento recusado', async () => {

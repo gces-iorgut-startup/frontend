@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Printer, Check, X as XIcon } from 'lucide-react'
 import { BudgetsService } from '../../services/budgets.service'
 import { getErrorMessage } from '../../lib/errorMessage'
@@ -11,6 +11,10 @@ import { Toast } from '../../components/common/Toast'
 import { BudgetStatusBadge } from '../../components/budgets/BudgetStatusBadge'
 import { NewBudgetModal } from '../../components/budgets/NewBudgetModal'
 import { BudgetDetailsPrintModal } from '../../components/budgets/BudgetDetailsPrintModal'
+import {
+  ConfirmBudgetStatusDialog,
+  type ConfirmableBudgetStatus,
+} from '../../components/budgets/ConfirmBudgetStatusDialog'
 import { formatCivilDate } from '../../components/chronicConditionDates'
 import type { Budget, BudgetStatus, ListBudgetsParams } from '../../types'
 import '../../styles/budgets.css'
@@ -48,6 +52,14 @@ export function BudgetsListPage() {
   const [creating, setCreating] = useState(false)
   const [openBudgetId, setOpenBudgetId] = useState<string | null>(null)
   const [busyBudgetId, setBusyBudgetId] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    budget: Budget
+    status: ConfirmableBudgetStatus
+  } | null>(null)
+
+  const requestSeqRef = useRef(0)
+  const silentReloadRef = useRef(false)
+  const prevSearchInputRef = useRef(searchInput)
 
   const params = useMemo<ListBudgetsParams>(
     () => ({
@@ -62,6 +74,8 @@ export function BudgetsListPage() {
   )
 
   useEffect(() => {
+    if (prevSearchInputRef.current === searchInput) return undefined
+    prevSearchInputRef.current = searchInput
     const timer = window.setTimeout(() => {
       const trimmed = searchInput.trim()
       setSearch(trimmed.length >= MIN_SEARCH_LENGTH ? trimmed : '')
@@ -70,48 +84,77 @@ export function BudgetsListPage() {
     return () => window.clearTimeout(timer)
   }, [searchInput])
 
-  const load = useCallback(async () => {
-    if (!clinicId) {
-      setError('Clínica não identificada.')
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await BudgetsService.listBudgets(clinicId, params)
-      setBudgets(response.budgets)
-      setTotal(response.total)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Não foi possível carregar os orçamentos.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId, params])
-
   useEffect(() => {
-    void load()
-  }, [load, reloadKey])
+    let active = true
+    const seq = ++requestSeqRef.current
+    const silent = silentReloadRef.current
+    silentReloadRef.current = false
 
-  const reload = () => setReloadKey((key) => key + 1)
+    async function fetchBudgets() {
+      if (!clinicId) {
+        if (!active || seq !== requestSeqRef.current) return
+        setError('Clínica não identificada.')
+        setLoading(false)
+        return
+      }
+      if (!silent) setLoading(true)
+      setError(null)
+      let redirecting = false
+      try {
+        const response = await BudgetsService.listBudgets(clinicId, params)
+        if (!active || seq !== requestSeqRef.current) return
+        const nextTotalPages = Math.max(1, Math.ceil(response.total / PAGE_SIZE))
+        if ((params.page ?? 1) > nextTotalPages) {
+          redirecting = true
+          silentReloadRef.current = silent
+          setTotal(response.total)
+          setPage(nextTotalPages)
+          return
+        }
+        setBudgets(response.budgets)
+        setTotal(response.total)
+      } catch (err) {
+        if (!active || seq !== requestSeqRef.current) return
+        setError(getErrorMessage(err, 'Não foi possível carregar os orçamentos.'))
+      } finally {
+        if (active && seq === requestSeqRef.current && !redirecting) {
+          setLoading(false)
+        }
+      }
+    }
 
-  const quickStatus = async (budget: Budget, next: BudgetStatus) => {
-    if (!clinicId) return
+    void fetchBudgets()
+    return () => {
+      active = false
+    }
+  }, [clinicId, params, reloadKey])
+
+  const reload = useCallback((options?: { silent?: boolean }) => {
+    silentReloadRef.current = Boolean(options?.silent)
+    setReloadKey((key) => key + 1)
+  }, [])
+
+  const confirmQuickStatus = async () => {
+    if (!clinicId || !pendingConfirm) return
+    const { budget, status: next } = pendingConfirm
     setBusyBudgetId(budget.id)
     try {
       await BudgetsService.updateBudgetStatus(clinicId, budget.id, next)
       showToast('Status do orçamento atualizado.', 'success')
-      reload()
+      setPendingConfirm(null)
+      reload({ silent: true })
     } catch (err) {
       showToast(getErrorMessage(err, 'Não foi possível atualizar o status.'), 'error')
+      setPendingConfirm(null)
     } finally {
       setBusyBudgetId(null)
     }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const lastItem = Math.min(page * PAGE_SIZE, total)
+  const safePage = Math.min(page, totalPages)
+  const firstItem = total === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+  const lastItem = Math.min(safePage * PAGE_SIZE, total)
 
   return (
     <div className="budget-page">
@@ -188,7 +231,7 @@ export function BudgetsListPage() {
       {error && (
         <div className="budget-error-box" role="alert">
           <p>{error}</p>
-          <button type="button" className="budget-link-button" onClick={reload}>
+          <button type="button" className="budget-link-button" onClick={() => reload()}>
             Tentar novamente
           </button>
         </div>
@@ -234,7 +277,7 @@ export function BudgetsListPage() {
                           <button
                             type="button"
                             className="budget-link-button"
-                            onClick={() => void quickStatus(budget, 'APPROVED')}
+                            onClick={() => setPendingConfirm({ budget, status: 'APPROVED' })}
                             disabled={busy || isBudgetLocked(budget.status)}
                           >
                             <Check size={14} /> Aprovar
@@ -242,7 +285,7 @@ export function BudgetsListPage() {
                           <button
                             type="button"
                             className="budget-link-button danger"
-                            onClick={() => void quickStatus(budget, 'REJECTED')}
+                            onClick={() => setPendingConfirm({ budget, status: 'REJECTED' })}
                             disabled={busy}
                           >
                             <XIcon size={14} /> Recusar
@@ -305,7 +348,7 @@ export function BudgetsListPage() {
           onSaved={() => {
             setCreating(false)
             showToast('Orçamento criado com sucesso.', 'success')
-            reload()
+            reload({ silent: true })
           }}
         />
       )}
@@ -314,7 +357,16 @@ export function BudgetsListPage() {
         <BudgetDetailsPrintModal
           budgetId={openBudgetId}
           onClose={() => setOpenBudgetId(null)}
-          onChanged={reload}
+          onChanged={() => reload({ silent: true })}
+        />
+      )}
+
+      {pendingConfirm && (
+        <ConfirmBudgetStatusDialog
+          status={pendingConfirm.status}
+          submitting={busyBudgetId === pendingConfirm.budget.id}
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => void confirmQuickStatus()}
         />
       )}
 

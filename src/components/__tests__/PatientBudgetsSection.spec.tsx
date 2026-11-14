@@ -57,6 +57,13 @@ describe('PatientBudgetsSection', () => {
     expect(await screen.findByText('Nenhum orçamento para este paciente.')).toBeInTheDocument()
   })
 
+  it('informa quando existem mais orçamentos além do limite exibido', async () => {
+    vi.mocked(BudgetsService.listBudgets).mockResolvedValue({ budgets: [budget], total: 65 })
+    render(<PatientBudgetsSection patientId="p1" />)
+
+    expect(await screen.findByText('Exibindo os 1 orçamentos mais recentes de 65.')).toBeInTheDocument()
+  })
+
   it('recarrega a lista depois de criar um orçamento', async () => {
     const user = userEvent.setup()
     vi.mocked(BudgetsService.listBudgets).mockResolvedValue({ budgets: [], total: 0 })

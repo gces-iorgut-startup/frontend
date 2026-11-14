@@ -111,6 +111,12 @@
   color: #fff;
 }
 
+.budget-button.danger {
+  background: var(--color-danger, #e53935);
+  border-color: var(--color-danger, #e53935);
+  color: #fff;
+}
+
 .budget-button.ghost {
   background: transparent;
 }
@@ -367,6 +373,62 @@
   font-size: 0.9rem;
 }
 
+dialog.budget-confirm-dialog {
+  max-width: min(440px, calc(100vw - 32px));
+  margin: auto;
+  padding: 22px 24px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  background: #fff;
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.2));
+}
+
+dialog.budget-confirm-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog.budget-confirm-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+dialog.budget-confirm-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: var(--color-text, #1f2937);
+}
+
+dialog.budget-confirm-dialog p {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #4b5563);
+}
+
+.budget-confirm-actions,
+.budget-discard-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.budget-discard-bar {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius-sm, 6px);
+  background: #fff7ed;
+}
+
+.budget-discard-bar p {
+  margin: 0;
+  margin-right: auto;
+  font-size: 0.85rem;
+  color: #9a3412;
+}
+
 .budget-print-header,
 .budget-print-parties {
   display: flex;
@@ -450,7 +512,7 @@
 }
 
 @media print {
-  #root {
+  body.budget-print-open #root {
     display: none !important;
   }
 

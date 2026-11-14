@@ -18,9 +18,13 @@ const item = (overrides: Partial<DraftBudgetItem> = {}): DraftBudgetItem => ({
 })
 
 describe('budgetCalc', () => {
-  it('aceita vírgula decimal e rejeita campo vazio', () => {
+  it('aceita vírgula decimal, separador de milhar pt-BR/US e rejeita entrada vazia ou inválida', () => {
     expect(parseDecimal('19,99')).toBe(19.99)
     expect(parseDecimal('  2.5 ')).toBe(2.5)
+    expect(parseDecimal('1.200,50')).toBe(1200.5)
+    expect(parseDecimal('1.000.000,25')).toBe(1000000.25)
+    expect(parseDecimal('1,200.50')).toBe(1200.5)
+    expect(Number.isNaN(parseDecimal('1.2.3'))).toBe(true)
     expect(Number.isNaN(parseDecimal(''))).toBe(true)
   })
 
@@ -46,11 +50,14 @@ describe('budgetCalc', () => {
     expect(validateItems([])).toMatch(/ao menos um item/)
     expect(validateItems([item({ description: '   ' })])).toMatch(/descrição/)
     expect(validateItems([item({ quantity: '0' })])).toMatch(/quantidade/)
+    expect(validateItems([item({ unitPrice: '' })])).toMatch(/Informe o valor unitário/)
+    expect(validateItems([item({ unitPrice: 'abc' })])).toMatch(/valor unitário válido/)
     expect(validateItems([item({ unitPrice: '-1' })])).toMatch(/negativo/)
     expect(validateItems([item()])).toBeNull()
   })
 
-  it('valida desconto: negativo, acima de 100% e acima do subtotal', () => {
+  it('valida desconto: inválido, negativo, acima de 100% e acima do subtotal', () => {
+    expect(validateDiscount(100, 'FIXED', 'abc')).toMatch(/desconto válido/)
     expect(validateDiscount(100, 'FIXED', '-5')).toMatch(/negativo/)
     expect(validateDiscount(100, 'PERCENT', '101')).toMatch(/100%/)
     expect(validateDiscount(100, 'FIXED', '100,01')).toMatch(/maior que o subtotal/)
