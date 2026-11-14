@@ -34,6 +34,7 @@ import { UploadExamModal } from '../../components/UploadExamModal'
 import { WeightEvolutionChart } from '../../components/WeightEvolutionChart'
 import { PatientPhotoGallery } from '../../components/PatientPhotoGallery'
 import { VaccinationSection } from '../../components/VaccinationSection'
+import { PatientBudgetsSection } from '../../components/budgets/PatientBudgetsSection'
 import type {
   Appointment,
   ClinicalExamType,
@@ -46,7 +47,7 @@ import type {
 import { CLINICAL_EXAM_TYPES, CLINICAL_EXAM_LABELS } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao' | 'patologias'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao' | 'patologias' | 'orcamentos'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -454,6 +455,13 @@ export function PatientDetailsPage() {
         >
           Vacinação
         </button>
+        <button
+          className={`patient-details-tab${activeTab === 'orcamentos' ? ' active' : ''}`}
+          onClick={() => setActiveTab('orcamentos')}
+          type="button"
+        >
+          Orçamentos
+        </button>
       </div>
 
       {activeTab === 'dados' && (
@@ -809,6 +817,7 @@ export function PatientDetailsPage() {
       {activeTab === 'vacinacao' && patient && (
         <VaccinationSection patientId={patient.id} canRegister={user?.role !== 'TUTOR'} />
       )}
+      {activeTab === 'orcamentos' && patient && <PatientBudgetsSection patientId={patient.id} />}
 
       {showStartCareModal && (
         <div className="patient-edit-modal-overlay" role="presentation">
