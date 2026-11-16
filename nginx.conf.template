@@ -1,6 +1,7 @@
 server {
-    listen 80;
+    listen 8080;
     server_name _;
+    server_tokens off;
 
     root /usr/share/nginx/html;
     index index.html;
@@ -8,6 +9,8 @@ server {
     client_max_body_size 10m;
 
     gzip on;
+    gzip_min_length 256;
+    gzip_vary on;
     gzip_types
         text/plain
         text/css
@@ -18,6 +21,13 @@ server {
         application/xml+rss
         text/javascript;
 
+    # Endpoint interno de healthcheck do container Nginx
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
     # Reverse proxy para a API.
     #
     # O upstream é injetado em runtime via envsubst (variável de ambiente
@@ -27,7 +37,7 @@ server {
     # Usamos um resolver + variável no proxy_pass de propósito: assim o nginx
     # NÃO resolve o host no boot (sobe mesmo se a API ainda não existir) e
     # re-resolve o IP a cada poucos segundos — robusto a restart/troca de IP
-    # do container (a causa original do 502 era um IP de gateway chumbado).
+    # do container.
     location ^~ /api/ {
         resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
         set $api_upstream ${API_UPSTREAM};
@@ -39,6 +49,9 @@ server {
         proxy_pass $api_upstream;
 
         proxy_http_version 1.1;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -46,12 +59,21 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Assets versionados com hash do Vite podem ter cache longo imutável
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     }
 
+    # Fallback SPA: index.html nunca deve ficar preso em cache após novos deploys
     location / {
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     }
 }

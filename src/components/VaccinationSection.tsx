@@ -249,45 +249,66 @@ export function VaccinationSection({ patientId, canRegister = true }: Vaccinatio
               </tr>
             </thead>
             <tbody>
-              {vaccinations.map((vac) => (
-                <tr key={vac.id} data-testid={`vaccination-row-${vac.id}`}>
-                  <td style={{ fontWeight: 500, color: '#1e293b' }}>{vac.vaccineName}</td>
-                  <td>
-                    {vac.doseNumber ? (
-                      <span style={{ fontWeight: 500 }}>{vac.doseNumber}ª dose</span>
-                    ) : (
-                      <span style={{ color: '#94a3b8' }}>Dose única</span>
-                    )}
-                  </td>
-                  <td>{formatDate(vac.appliedAt)}</td>
-                  <td>
-                    {vac.intervalDays ? (
-                      <span>{vac.intervalDays} dias</span>
-                    ) : (
-                      <span style={{ color: '#94a3b8' }}>—</span>
-                    )}
-                  </td>
-                  <td>
-                    {vac.nextDoseAt ? (
-                      <span
-                        style={{
-                          fontWeight: 500,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          color: '#0f172a',
-                        }}
-                      >
-                        <Calendar size={14} color="#64748b" />
-                        {formatDate(vac.nextDoseAt)}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#94a3b8' }}>—</span>
-                    )}
-                  </td>
-                  <td>{renderStatusBadge(vac.status)}</td>
-                </tr>
-              ))}
+              {vaccinations.map((vac) => {
+                const isOverdue = vac.status === 'OVERDUE'
+                return (
+                  <tr
+                    key={vac.id}
+                    data-testid={`vaccination-row-${vac.id}`}
+                    className={isOverdue ? 'vaccination-row-overdue' : undefined}
+                    style={
+                      isOverdue
+                        ? {
+                            backgroundColor: '#fef2f2',
+                          }
+                        : undefined
+                    }
+                  >
+                    <td style={{ fontWeight: 500, color: isOverdue ? '#991b1b' : '#1e293b' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        {isOverdue && (
+                          <AlertCircle size={15} color="#dc2626" data-testid={`alert-icon-${vac.id}`} />
+                        )}
+                        <span>{vac.vaccineName}</span>
+                      </div>
+                    </td>
+                    <td>
+                      {vac.doseNumber ? (
+                        <span style={{ fontWeight: 500 }}>{vac.doseNumber}ª dose</span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>Dose única</span>
+                      )}
+                    </td>
+                    <td>{formatDate(vac.appliedAt)}</td>
+                    <td>
+                      {vac.intervalDays ? (
+                        <span>{vac.intervalDays} dias</span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      {vac.nextDoseAt ? (
+                        <span
+                          style={{
+                            fontWeight: 500,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: isOverdue ? '#dc2626' : '#0f172a',
+                          }}
+                        >
+                          <Calendar size={14} color={isOverdue ? '#dc2626' : '#64748b'} />
+                          {formatDate(vac.nextDoseAt)}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
+                    <td>{renderStatusBadge(vac.status)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

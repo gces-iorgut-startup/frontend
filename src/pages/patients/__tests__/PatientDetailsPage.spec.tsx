@@ -7,6 +7,7 @@ import { api } from '../../../lib/api'
 import { clinicalService } from '../../../lib/clinicalService'
 import { examService } from '../../../lib/examService'
 import { AppointmentsService } from '../../../services/appointments.service'
+import { BudgetsService } from '../../../services/budgets.service'
 
 vi.mock('../../../lib/api', () => ({ api: { get: vi.fn(), post: vi.fn() } }))
 vi.mock('../../../lib/clinicalService', () => ({
@@ -17,6 +18,9 @@ vi.mock('../../../lib/examService', () => ({
 }))
 vi.mock('../../../services/appointments.service', () => ({
   AppointmentsService: { listByDay: vi.fn(), listInProgress: vi.fn(), create: vi.fn() },
+}))
+vi.mock('../../../services/budgets.service', () => ({
+  BudgetsService: { createBudget: vi.fn(), listBudgets: vi.fn(), getBudgetDetails: vi.fn(), updateBudgetStatus: vi.fn() },
 }))
 const authState = vi.hoisted(() => ({ user: { id: 'vet-1', crmv: 'CRMV-SP 12345' } as { id: string; crmv: string | null } }))
 vi.mock('../../../stores/authStore', () => ({
@@ -122,5 +126,24 @@ describe('PatientDetailsPage', () => {
 
     expect(await screen.findByText(/Cadastre seu CRMV/)).toBeInTheDocument()
     expect(AppointmentsService.create).not.toHaveBeenCalled()
+  })
+
+  it('abre a aba de orçamentos com a seção do paciente', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.get).mockResolvedValue({
+      data: { patient: { id: 'patient-1', name: 'Luna', species: 'CANINE', tutor: null } },
+    })
+    vi.mocked(BudgetsService.listBudgets).mockResolvedValue({ budgets: [], total: 0 })
+
+    render(
+      <MemoryRouter initialEntries={['/pacientes/patient-1']}>
+        <Routes>
+          <Route path="/pacientes/:id" element={<PatientDetailsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Orçamentos' }))
+    expect(await screen.findByLabelText('Orçamentos do paciente')).toBeInTheDocument()
   })
 })

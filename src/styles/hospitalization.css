@@ -1,0 +1,505 @@
+/* EVO-05 — Painel de internação e prontuário de internação. */
+
+.hospitalization-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+}
+
+/* ── Cabeçalho do painel ──────────────────────────── */
+
+.hospitalization-header,
+.hospitalization-details-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.hospitalization-header h1,
+.hospitalization-details-header h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--color-text);
+}
+
+.hospitalization-header p,
+.hospitalization-details-header p {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.hospitalization-header-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/*
+ * As classes .confirm/.ghost do projeto só têm estilo dentro de
+ * `.patient-edit-modal-actions`. Fora do modal elas renderizam como texto
+ * puro — foi o que apareceu ao subir a tela. Aqui damos aparência de botão
+ * aos mesmos nomes, mantendo as cores do design system.
+ */
+.hospitalization-header-actions button,
+.hospitalization-discharge-bar button,
+.hospitalization-evolution-form button,
+.hospitalization-page > button.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hospitalization-header-actions button.confirm.save,
+.hospitalization-discharge-bar button.confirm.save,
+.hospitalization-evolution-form button.confirm.save {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.hospitalization-header-actions button.confirm.save:hover:not(:disabled),
+.hospitalization-discharge-bar button.confirm.save:hover:not(:disabled),
+.hospitalization-evolution-form button.confirm.save:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.hospitalization-header-actions button.ghost,
+.hospitalization-discharge-bar button.ghost,
+.hospitalization-page > button.ghost {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.hospitalization-header-actions button.ghost:hover:not(:disabled),
+.hospitalization-discharge-bar button.ghost:hover:not(:disabled),
+.hospitalization-page > button.ghost:hover:not(:disabled) {
+  background: var(--color-bg-page);
+  border-color: var(--gray-300);
+}
+
+/* O "voltar" é navegação, não ação: alinhado à esquerda e discreto. */
+.hospitalization-page > button.ghost {
+  align-self: flex-start;
+}
+
+.hospitalization-header-actions button:disabled,
+.hospitalization-discharge-bar button:disabled,
+.hospitalization-evolution-form button:disabled,
+.hospitalization-page > button.ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Estados ──────────────────────────────────────── */
+
+.hospitalization-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.hospitalization-state-error {
+  color: var(--color-danger);
+}
+
+.hospitalization-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.hospitalization-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) var(--space-lg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.hospitalization-empty p {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hospitalization-empty span {
+  font-size: 0.875rem;
+}
+
+/* ── Grade de leitos ──────────────────────────────── */
+
+.hospitalization-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: var(--space-md);
+}
+
+.hospitalization-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hospitalization-card:hover,
+.hospitalization-card:focus-visible {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.hospitalization-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hospitalization-card-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.hospitalization-card-photo.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-light);
+  color: var(--gray-700);
+  font-weight: 700;
+}
+
+.hospitalization-card-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.hospitalization-card-identity strong {
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hospitalization-card-identity span {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Badge de status ──────────────────────────────── */
+
+.hospitalization-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hospitalization-badge.status-admitted {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.hospitalization-badge.status-critical {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.hospitalization-badge.status-discharged {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* ── Fatos do card e resumo ───────────────────────── */
+
+.hospitalization-card-facts,
+.hospitalization-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.hospitalization-card-facts div,
+.hospitalization-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hospitalization-card-facts dt,
+.hospitalization-summary dt {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.hospitalization-card-facts dd,
+.hospitalization-summary dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hospitalization-summary {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  gap: var(--space-lg);
+}
+
+.hospitalization-card-reason {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Blocos de conteúdo ───────────────────────────── */
+
+.hospitalization-block {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+}
+
+.hospitalization-block h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-sm);
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.hospitalization-block p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  white-space: pre-wrap;
+}
+
+/* ── Timeline de evoluções ────────────────────────── */
+
+.hospitalization-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hospitalization-timeline li {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hospitalization-timeline li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.hospitalization-timeline-time {
+  display: flex;
+  flex-direction: column;
+  min-width: 76px;
+  flex-shrink: 0;
+}
+
+.hospitalization-timeline-time strong {
+  color: var(--color-text);
+  font-size: 0.9375rem;
+}
+
+.hospitalization-timeline-time span {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.hospitalization-timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.hospitalization-timeline-body p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.hospitalization-timeline-vitals {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary-hover);
+}
+
+.hospitalization-timeline-vitals.empty {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.hospitalization-timeline-author {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Formulário de aferição ───────────────────────── */
+
+.hospitalization-evolution-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+}
+
+.hospitalization-evolution-form h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.hospitalization-form-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+.hospitalization-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.hospitalization-evolution-form label,
+.hospitalization-notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hospitalization-evolution-form label span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.hospitalization-evolution-form input,
+.hospitalization-evolution-form textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.hospitalization-evolution-form textarea {
+  resize: vertical;
+}
+
+.hospitalization-evolution-form input:focus,
+.hospitalization-evolution-form textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.hospitalization-evolution-form button {
+  align-self: flex-start;
+}
+
+.hospitalization-discharge-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/* ── Mobile ───────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .hospitalization-page {
+    padding: var(--space-md);
+  }
+
+  .hospitalization-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hospitalization-header-actions {
+    width: 100%;
+  }
+
+  .hospitalization-header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .hospitalization-timeline li {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .hospitalization-discharge-bar button {
+    width: 100%;
+    justify-content: center;
+  }
+}

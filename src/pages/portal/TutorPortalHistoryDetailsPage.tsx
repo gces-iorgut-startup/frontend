@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Printer, Share2 } from 'lucide-react'
-import { parseRoutineGuidance } from '../../lib/clinicalRecordContent'
+import { resolveRecordObservations } from '../../lib/clinicalRecordContent'
 import { getErrorMessage } from '../../lib/errorMessage'
 import { portalService } from '../../lib/portalService'
 import type { Patient, TutorPortalClinicalRecord } from '../../types'
@@ -30,7 +30,7 @@ function downloadTextFile(fileName: string, content: string) {
 }
 
 function buildExportContent(patient: Patient, record: TutorPortalClinicalRecord) {
-  const routineGuidance = parseRoutineGuidance(record.routineGuidance)
+  const routineGuidance = resolveRecordObservations(record)
 
   return [
     `Atendimento - ${formatDateTime(record.createdAt)}`,
@@ -131,7 +131,7 @@ export function TutorPortalHistoryDetailsPage() {
   const routineGuidance = useMemo(
     () =>
       record
-        ? parseRoutineGuidance(record.routineGuidance)
+        ? resolveRecordObservations(record)
         : { observations: '', additionalObservations: '' },
     [record],
   )

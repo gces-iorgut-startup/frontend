@@ -5,6 +5,11 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-frontend-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Os jobs só leem o código; o push da imagem usa as credenciais do Docker Hub
 permissions:
@@ -175,10 +180,11 @@ jobs:
 
   build-docker:
     name: Build e Push da Imagem Docker
-    needs: lint-e-build-test
+    needs: [lint-e-build-test, e2e]
     runs-on: ubuntu-latest
-
-    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    outputs:
+      sha_tag: ${{ steps.meta.outputs.sha_tag }}
 
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -187,12 +193,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validar credenciais do Docker Hub em push na main
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        run: |
+          if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
+            echo "Erro: DOCKERHUB_USERNAME e DOCKERHUB_TOKEN são obrigatórios para publicação na main."
+            exit 1
+          fi
+
+      - name: Definir tags da imagem
+        id: meta
+        run: |
+          if [ -n "${DOCKERHUB_USERNAME}" ]; then
+            IMAGE="${DOCKERHUB_USERNAME}/iougurt-frontend"
+          else
+            IMAGE="iougurt/iougurt-frontend"
+          fi
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Sem os secrets (ex.: forks), não há login nem push; a imagem só é construída
+      # Sem os secrets (ex.: forks/PRs), não há login nem push; a imagem só é construída
       - name: Login no Docker Hub
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -202,27 +228,138 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-          tags: ${{ env.DOCKERHUB_USERNAME != '' && format('{0}/iougurt-frontend:latest', env.DOCKERHUB_USERNAME) || 'iougurt/iougurt-frontend:latest' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha_tag }}
+          build-args: |
+            VITE_GOOGLE_CLIENT_ID=${{ vars.VITE_GOOGLE_CLIENT_ID }}
+            VITE_API_URL=/api
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  #deploy:
-    #name: Deploy para o Servidor
-    #needs: build-docker
-    #runs-on: ubuntu-latest
-    #if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  deploy:
+    name: Deploy em Produção via SSH (WEB-04)
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    environment: production
 
-    #steps:
-      #- name: Deploy via SSH
-        #uses: appleboy/ssh-action@v1.0.3
-        #with:
-          #host: ${{ secrets.SSH_HOST }}
-          #username: ${{ secrets.SSH_USER }}
-          #key: ${{ secrets.SSH_PRIVATE_KEY }}
-          #script: |
-            #cd ~/app/iougurt
+    steps:
+      - name: Validar secrets e variáveis obrigatórias de deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL || secrets.PROD_BASE_URL }}
+        run: |
+          for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY PROD_BASE_URL; do
+            if [ -z "${!var}" ]; then
+              echo "Erro: secret/variável ${var} não configurada no environment production."
+              exit 1
+            fi
+          done
 
-            #docker compose pull frontend
-            #docker compose up -d frontend
+      - name: Deploy atômico na VPS via SSH
+        uses: appleboy/ssh-action@v1.1.0
+        env:
+          FRONTEND_IMAGE_TAG: ${{ needs.build-docker.outputs.sha_tag }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          envs: FRONTEND_IMAGE_TAG,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
+          script: |
+            set -euo pipefail
+            cd ~/app/iougurt
+
+            if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+              echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            fi
+
+            PREV_IMAGE="$(docker inspect --format='{{.Config.Image}}' iougurt-frontend 2>/dev/null || true)"
+            TARGET_TAG="${FRONTEND_IMAGE_TAG:-latest}"
+
+            echo "Baixando imagem do Frontend (tag: ${TARGET_TAG})..."
+            FRONTEND_IMAGE_TAG="$TARGET_TAG" docker compose pull frontend
+
+            rollback() {
+              echo "Falha ao subir a nova versão do Frontend. Logs recentes:"
+              docker compose logs --tail=80 frontend || true
+              if [ -n "$PREV_IMAGE" ]; then
+                PREV_TAG="${PREV_IMAGE##*:}"
+                echo "Executando rollback para ${PREV_IMAGE}..."
+                FRONTEND_IMAGE_TAG="$PREV_TAG" docker compose up -d --wait --wait-timeout 90 --no-deps frontend || true
+              fi
+              exit 1
+            }
+
+            trap rollback ERR
+
+            FRONTEND_IMAGE_TAG="$TARGET_TAG" docker compose up -d --wait --wait-timeout 90 --no-deps frontend
+            docker compose exec -T frontend wget -qO- http://127.0.0.1:8080/nginx-health
+            docker compose exec -T frontend wget -qO- http://127.0.0.1:8080/api/health/ready
+
+            trap - ERR
+
+            if [ -f .env ]; then
+              if grep -q '^FRONTEND_IMAGE_TAG=' .env; then
+                sed -i "s/^FRONTEND_IMAGE_TAG=.*/FRONTEND_IMAGE_TAG=${TARGET_TAG}/" .env
+              else
+                echo "FRONTEND_IMAGE_TAG=${TARGET_TAG}" >> .env
+              fi
+            fi
+
+            docker image prune -f
+
+  post-deploy-smoke:
+    name: Testes de Regressão e Smoke Pós-Deploy (WEB-05)
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar browser Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar Smoke Tests em Produção
+        env:
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL || secrets.PROD_BASE_URL }}
+          EXPECT_SWAGGER_DISABLED: ${{ vars.EXPECT_SWAGGER_DISABLED || 'true' }}
+          SMOKE_REQUIRE_CREDENTIALS: ${{ vars.SMOKE_REQUIRE_CREDENTIALS || 'false' }}
+          PROD_SMOKE_OWNER_EMAIL: ${{ secrets.PROD_SMOKE_OWNER_EMAIL }}
+          PROD_SMOKE_OWNER_PASSWORD: ${{ secrets.PROD_SMOKE_OWNER_PASSWORD }}
+          PROD_SMOKE_VET_EMAIL: ${{ secrets.PROD_SMOKE_VET_EMAIL }}
+          PROD_SMOKE_VET_PASSWORD: ${{ secrets.PROD_SMOKE_VET_PASSWORD }}
+          PROD_SMOKE_TUTOR_EMAIL: ${{ secrets.PROD_SMOKE_TUTOR_EMAIL }}
+          PROD_SMOKE_TUTOR_PASSWORD: ${{ secrets.PROD_SMOKE_TUTOR_PASSWORD }}
+          HEADLESS: 'true'
+        run: npm run test:smoke:prod
+
+      - name: Upload do relatório e diagnósticos do Smoke Test
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-smoke-report
+          path: |
+            playwright-smoke-report
+            test-results
+          retention-days: 7

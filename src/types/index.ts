@@ -254,6 +254,8 @@ export interface ClinicalRecord {
   prescriptions?: string | null
   breathingNotes?: string | null
   routineGuidance?: string | null
+  /** CLI-01 — observações do atendimento, campo próprio. */
+  observations?: string | null
   aiSummary?: string | null
   finalized: boolean
   createdAt: string
@@ -290,6 +292,7 @@ export interface UpdateClinicalRecordRequest {
   prescriptions?: string
   breathingNotes?: string
   routineGuidance?: string
+  observations?: string
 }
 
 // ── Vaccinations ──────────────────────────────────
@@ -306,6 +309,39 @@ export interface Vaccination {
   status: VaccinationStatus
   createdAt: string
   patient?: Pick<Patient, 'id' | 'name'>
+}
+
+// ── Vaccination Alerts (EVO-06) ───────────────────
+export type VaccinationAlertStatus = 'OVERDUE' | 'UPCOMING'
+
+export interface VaccinationAlertPatient {
+  id: string
+  name: string
+  species: string
+}
+
+export interface VaccinationAlertTutor {
+  id: string
+  fullName: string
+  phone: string
+}
+
+export interface VaccinationAlertItem {
+  id: string
+  vaccineName: string
+  doseNumber: number | null
+  nextDoseAt: string
+  status: VaccinationAlertStatus
+  daysDifference: number
+  daysOverdue?: number
+  daysUntilDue?: number
+  patient: VaccinationAlertPatient
+  tutor: VaccinationAlertTutor
+}
+
+export interface VaccinationAlertsResponse {
+  items: VaccinationAlertItem[]
+  total: number
 }
 
 export interface CreateVaccinationRequest {
@@ -352,6 +388,35 @@ export interface ExamFile {
   fileType: 'pdf' | 'image'
   clinicalType?: ClinicalExamType | string | null
   uploadedAt: string
+}
+
+// ── Chronic Conditions (CLI-02) ───────────────────
+export type ChronicConditionStatus = 'ACTIVE' | 'INACTIVE' | 'RESOLVED'
+
+export interface ChronicCondition {
+  id: string
+  patientId: string
+  name: string
+  diagnosedAt: string | null
+  status: ChronicConditionStatus
+  observations: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateChronicConditionRequest {
+  patientId: string
+  name: string
+  diagnosedAt?: string
+  status?: ChronicConditionStatus
+  observations?: string
+}
+
+export interface UpdateChronicConditionRequest {
+  name?: string
+  diagnosedAt?: string | null
+  status?: ChronicConditionStatus
+  observations?: string | null
 }
 
 // ── Patient Photos ────────────────────────────────
@@ -454,7 +519,18 @@ export interface TutorAlert {
   type: 'overdue_vaccine' | 'upcoming_vaccine' | 'vet_recommendation'
   message: string
   patientName: string
+  patientId?: string
+  vaccineName?: string
+  doseNumber?: number
   date?: string
+  daysDifference?: number
+}
+
+export interface RequestAppointmentInput {
+  patientId: string
+  category: AppointmentCategory
+  dateTime: string
+  observation?: string
 }
 
 export interface TutorPortalClinicalRecord {
@@ -464,6 +540,8 @@ export interface TutorPortalClinicalRecord {
   pendingDiagnosis?: string | null
   prescriptions?: string | null
   routineGuidance?: string | null
+  /** CLI-01 — observações do atendimento, campo próprio. */
+  observations?: string | null
   aiSummary?: string | null
   weightKg?: number | null
   finalized: boolean
@@ -485,6 +563,75 @@ export interface CreateTutorAccountResponse {
   temporaryPassword: string
 }
 
+// ── Hospitalizations (EVO-05) ─────────────────────
+export type HospitalizationStatus = 'ADMITTED' | 'CRITICAL' | 'DISCHARGED'
+
+/** Resumo do veterinário que o backend embute na internação e na evolução. */
+export interface HospitalizationVet {
+  id: string
+  name: string
+}
+
+export interface HospitalizationPatientCard {
+  id: string
+  name: string
+  species: string
+  photoUrl: string | null
+}
+
+export interface Hospitalization {
+  id: string
+  clinicId: string
+  patientId: string
+  admittedByVetId: string
+  bedIdentifier: string
+  reason: string
+  status: HospitalizationStatus
+  admittedAt: string
+  dischargedAt: string | null
+  dischargeNotes: string | null
+  createdAt: string
+  updatedAt: string
+  patient?: HospitalizationPatientCard
+  admittedByVet?: HospitalizationVet
+}
+
+export interface HospitalizationEvolution {
+  id: string
+  hospitalizationId: string
+  recordedByVetId: string
+  temperature: number | null
+  heartRate: number | null
+  respiratoryRate: number | null
+  mucousMembranes: string | null
+  notes: string
+  recordedAt: string
+  recordedByVet?: HospitalizationVet
+}
+
+export interface HospitalizationDetails extends Hospitalization {
+  evolutions: HospitalizationEvolution[]
+}
+
+/** Status que mantêm o leito ocupado. A alta tem rota própria no backend. */
+export type OpenHospitalizationStatus = Exclude<HospitalizationStatus, 'DISCHARGED'>
+
+export interface AdmitPatientRequest {
+  patientId: string
+  bedIdentifier: string
+  reason: string
+  /** Em branco, o backend usa ADMITTED. */
+  status?: OpenHospitalizationStatus
+}
+
+export interface AddHospitalizationEvolutionRequest {
+  temperature?: number
+  heartRate?: number
+  respiratoryRate?: number
+  mucousMembranes?: string
+  notes: string
+}
+
 // ── Paginated ─────────────────────────────────────
 export interface PaginatedResponse<T> {
   items?: T[]
@@ -502,3 +649,5 @@ export interface ApiError {
   message?: string
   issues?: Record<string, string[]>
 }
+
+export * from './budget'

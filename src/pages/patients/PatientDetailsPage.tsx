@@ -28,11 +28,13 @@ import {
 } from '../../lib/patientFields'
 import { AppointmentsService } from '../../services/appointments.service'
 import { TutorsService } from '../../services/tutors.service'
+import { ChronicConditionsSection } from '../../components/ChronicConditionsSection'
 import { useAuthStore } from '../../stores/authStore'
 import { UploadExamModal } from '../../components/UploadExamModal'
 import { WeightEvolutionChart } from '../../components/WeightEvolutionChart'
 import { PatientPhotoGallery } from '../../components/PatientPhotoGallery'
 import { VaccinationSection } from '../../components/VaccinationSection'
+import { PatientBudgetsSection } from '../../components/budgets/PatientBudgetsSection'
 import type {
   Appointment,
   ClinicalExamType,
@@ -45,7 +47,7 @@ import type {
 import { CLINICAL_EXAM_TYPES, CLINICAL_EXAM_LABELS } from '../../types'
 import '../../styles/patients.css'
 
-type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao'
+type DetailsTab = 'dados' | 'prontuario' | 'exames' | 'fotos' | 'vacinacao' | 'patologias' | 'orcamentos'
 const IMMEDIATE_APPOINTMENT_WINDOW_MS = 30 * 60 * 1000
 
 function getAppointmentCategoryLabel(category?: string | null) {
@@ -443,6 +445,13 @@ export function PatientDetailsPage() {
           Exames
         </button>
         <button
+          className={`patient-details-tab${activeTab === 'patologias' ? ' active' : ''}`}
+          onClick={() => setActiveTab('patologias')}
+          type="button"
+        >
+          Patologias
+        </button>
+        <button
           className={`patient-details-tab${activeTab === 'fotos' ? ' active' : ''}`}
           onClick={() => setActiveTab('fotos')}
           type="button"
@@ -455,6 +464,13 @@ export function PatientDetailsPage() {
           type="button"
         >
           Vacinação
+        </button>
+        <button
+          className={`patient-details-tab${activeTab === 'orcamentos' ? ' active' : ''}`}
+          onClick={() => setActiveTab('orcamentos')}
+          type="button"
+        >
+          Orçamentos
         </button>
       </div>
 
@@ -802,12 +818,16 @@ export function PatientDetailsPage() {
         </section>
       )}
 
+      {activeTab === 'patologias' && patient && (
+        <ChronicConditionsSection patientId={patient.id} canEdit={user?.role !== 'TUTOR'} />
+      )}
       {/* A galeria busca as próprias fotos ao montar, então só paga a request
           quando o usuário realmente abre a aba. */}
       {activeTab === 'fotos' && <PatientPhotoGallery patientId={patient.id} />}
       {activeTab === 'vacinacao' && patient && (
         <VaccinationSection patientId={patient.id} canRegister={user?.role !== 'TUTOR'} />
       )}
+      {activeTab === 'orcamentos' && patient && <PatientBudgetsSection patientId={patient.id} />}
 
       {showStartCareModal && (
         <div className="patient-edit-modal-overlay" role="presentation">

@@ -13,6 +13,9 @@ interface ScheduleModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  initialTutorId?: string
+  initialPatientId?: string
+  initialCategory?: AppointmentCategory | string
 }
 
 const TIME_SLOTS = [
@@ -39,7 +42,14 @@ const CATEGORY_OPTIONS: SelectOption[] = [
   { label: 'Cirurgia', value: 'SURGICAL' },
 ]
 
-export function ScheduleModal({ isOpen, onClose, onSuccess }: ScheduleModalProps) {
+export function ScheduleModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialTutorId,
+  initialPatientId,
+  initialCategory,
+}: ScheduleModalProps) {
   const [tutorId, setTutorId] = useState('')
   const [patientId, setPatientId] = useState('')
   const [data, setData] = useState('')
@@ -62,6 +72,8 @@ export function ScheduleModal({ isOpen, onClose, onSuccess }: ScheduleModalProps
   useEffect(() => {
     if (!isOpen) return
     setData(selectedDate)
+    if (initialTutorId) setTutorId(initialTutorId)
+    if (initialCategory) setCategory(initialCategory)
     setLoadingTutors(true)
     setLoadError('')
     TutorsService.listAll()
@@ -70,7 +82,7 @@ export function ScheduleModal({ isOpen, onClose, onSuccess }: ScheduleModalProps
         setLoadError(getErrorMessage(err, 'Não foi possível carregar a lista de tutores.')),
       )
       .finally(() => setLoadingTutors(false))
-  }, [isOpen, selectedDate])
+  }, [isOpen, selectedDate, initialTutorId, initialCategory])
 
   useEffect(() => {
     if (!tutorId) {
@@ -82,12 +94,17 @@ export function ScheduleModal({ isOpen, onClose, onSuccess }: ScheduleModalProps
     setLoadError('')
     setPatientId('')
     PatientsService.list(1, undefined, tutorId)
-      .then((res) => setPatients(res.patients))
+      .then((res) => {
+        setPatients(res.patients)
+        if (initialPatientId && res.patients.some((p) => p.id === initialPatientId)) {
+          setPatientId(initialPatientId)
+        }
+      })
       .catch((err: unknown) =>
         setLoadError(getErrorMessage(err, 'Não foi possível carregar os pacientes do tutor.')),
       )
       .finally(() => setLoadingPatients(false))
-  }, [tutorId])
+  }, [tutorId, initialPatientId])
 
   const resetForm = () => {
     setTutorId('')

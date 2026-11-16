@@ -126,6 +126,9 @@ describe('VaccinationSection — Seção de Vacinação no Prontuário (CLI-06)'
     expect(screen.getByText('Antirrábica Anual')).toBeInTheDocument()
     expect(screen.getByText('Dose única')).toBeInTheDocument()
     expect(screen.getByTestId('badge-overdue')).toHaveTextContent('Atrasada')
+    const overdueRow = screen.getByTestId('vaccination-row-vac-3')
+    expect(overdueRow).toHaveClass('vaccination-row-overdue')
+    expect(screen.getByTestId('alert-icon-vac-3')).toBeInTheDocument()
   })
 
   it('deve abrir o modal de registro de vacina, preencher os campos e incluir nova vacina na lista', async () => {
