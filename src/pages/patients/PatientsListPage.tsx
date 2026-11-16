@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Filter, Plus, LogIn, X, Calendar } from 'lucide-react'
 import { api } from '../../lib/api'
+import { getErrorMessage } from '../../lib/errorMessage'
 import { getPatientSpeciesLabel, PATIENT_SPECIES_OPTIONS } from '../../lib/patientFields'
 import type { Patient } from '../../types'
 import '../../styles/patients.css'
@@ -14,6 +15,7 @@ export function PatientsListPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [searchError, setSearchError] = useState('')
+  const [loadError, setLoadError] = useState('')
   
   const [showFilter, setShowFilter] = useState(false)
   const [filterSpecies, setFilterSpecies] = useState('')
@@ -27,6 +29,7 @@ export function PatientsListPage() {
 
   const fetchPatients = useCallback(async () => {
     setLoading(true)
+    setLoadError('')
     try {
       const params: Record<string, string | number> = { page, perPage }
       if (debouncedSearch) params.search = debouncedSearch
@@ -36,7 +39,7 @@ export function PatientsListPage() {
       setPatients(response.data.patients ?? [])
       setTotal(response.data.total ?? 0)
     } catch (err) {
-      console.error('Erro ao carregar pacientes:', err)
+      setLoadError(getErrorMessage(err, 'Não foi possível carregar os pacientes.'))
     } finally {
       setLoading(false)
     }
@@ -222,6 +225,13 @@ export function PatientsListPage() {
       {loading ? (
         <div className="patients-loading">
           <div className="spinner spinner-dark" />
+        </div>
+      ) : loadError ? (
+        <div className="patients-empty" role="alert">
+          <p>{loadError}</p>
+          <button type="button" className="btn btn-outline" onClick={() => void fetchPatients()}>
+            Tentar novamente
+          </button>
         </div>
       ) : patients.length === 0 ? (
         <div className="patients-empty">

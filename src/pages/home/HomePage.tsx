@@ -9,6 +9,8 @@ import {
   APPOINTMENT_CATEGORY_LABELS,
   HOME_AGENDA_CATEGORY_COLOR_CLASS,
 } from '../../lib/appointmentCategory'
+import { toLocalDateString } from '../../lib/localDate'
+import { getErrorMessage } from '../../lib/errorMessage'
 import { getPatientSpeciesLabel } from '../../lib/patientFields'
 
 import type { Appointment, ClinicHistoryListItem } from '../../types'
@@ -44,6 +46,8 @@ export function HomePage() {
 
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [loadingAgenda, setLoadingAgenda] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [agendaError, setAgendaError] = useState<string | null>(null)
 
   const [latestAppointments, setLatestAppointments] = useState<ClinicHistoryListItem[]>([])
   const [agenda, setAgenda] = useState<Appointment[]>([])
@@ -59,14 +63,14 @@ export function HomePage() {
           setLatestAppointments(historyData.slice(0, 8)) // Get max 8 for dashboard
         }
       } catch (err) {
-        console.error('Failed to load history', err)
+        if (!cancelled) setHistoryError(getErrorMessage(err, 'Não foi possível carregar os últimos atendimentos.'))
       } finally {
         if (!cancelled) setLoadingHistory(false)
       }
 
       // Fetch Today's Agenda
       try {
-        const todayStr = new Date().toISOString().split('T')[0]
+        const todayStr = toLocalDateString()
         const agendaData = await AppointmentsService.listByDay(todayStr)
         if (!cancelled) {
           // Sort by time
@@ -76,7 +80,7 @@ export function HomePage() {
           setAgenda(sorted)
         }
       } catch (err) {
-        console.error('Failed to load agenda', err)
+        if (!cancelled) setAgendaError(getErrorMessage(err, 'Não foi possível carregar a agenda de hoje.'))
       } finally {
         if (!cancelled) setLoadingAgenda(false)
       }
@@ -103,6 +107,10 @@ export function HomePage() {
         {loadingHistory ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-primary)' }}>
             <LoaderCircle className="care-spin" size={32} />
+          </div>
+        ) : historyError ? (
+          <div role="alert" style={{ color: 'var(--color-danger, #b91c1c)', fontSize: '0.875rem' }}>
+            {historyError}
           </div>
         ) : latestAppointments.length === 0 ? (
           <div style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
@@ -173,6 +181,10 @@ export function HomePage() {
         {loadingAgenda ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-primary)' }}>
             <LoaderCircle className="care-spin" size={32} />
+          </div>
+        ) : agendaError ? (
+          <div role="alert" style={{ color: 'var(--color-danger, #b91c1c)', fontSize: '0.875rem' }}>
+            {agendaError}
           </div>
         ) : agenda.length === 0 ? (
           <div style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>

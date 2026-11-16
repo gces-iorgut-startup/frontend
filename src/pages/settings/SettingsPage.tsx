@@ -44,7 +44,15 @@ export function SettingsPage() {
       try {
         const [meRes, clinicRes] = await Promise.all([
           authService.getMe(),
-          clinicService.getMyClinic().catch(() => null),
+          clinicService.getMyClinic().catch((err: unknown) => {
+            if (!cancelled) {
+              setClinicFeedback({
+                kind: 'error',
+                message: getErrorMessage(err, 'Não foi possível carregar os dados da clínica.'),
+              })
+            }
+            return null
+          }),
         ])
 
         if (cancelled) return

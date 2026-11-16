@@ -64,4 +64,18 @@ describe('PatientsListPage - pesquisa avancada', () => {
 
     expect(await screen.findByText('Nenhum paciente encontrado para “inexistente”.')).toBeInTheDocument()
   })
+
+  it('exibe erro e permite tentar novamente quando a API falha', async () => {
+    const user = userEvent.setup()
+    mockedGet.mockRejectedValueOnce(new Error('falha'))
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('falha')
+
+    mockedGet.mockResolvedValueOnce({ data: { patients: [], total: 0 } })
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mockedGet).toHaveBeenCalledTimes(2)
+  })
 })

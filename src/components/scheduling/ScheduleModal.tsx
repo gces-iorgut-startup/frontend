@@ -4,6 +4,7 @@ import type { SelectOption } from '../common/CustomSelect'
 import { useAgendaStore } from '../../stores/useAgendaStore'
 import { useAuthStore } from '../../stores/authStore'
 import { TutorsService } from '../../services/tutors.service'
+import { getErrorMessage } from '../../lib/errorMessage'
 import { PatientsService } from '../../services/patients.service'
 import type { Tutor, Patient, AppointmentCategory } from '../../types'
 import '../../styles/modal.css'
@@ -58,6 +59,7 @@ export function ScheduleModal({
   const [observacao, setObservacao] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [loadError, setLoadError] = useState('')
 
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
@@ -73,9 +75,12 @@ export function ScheduleModal({
     if (initialTutorId) setTutorId(initialTutorId)
     if (initialCategory) setCategory(initialCategory)
     setLoadingTutors(true)
-    TutorsService.list(1)
-      .then((res) => setTutors(res.tutors))
-      .catch(() => {})
+    setLoadError('')
+    TutorsService.listAll()
+      .then((all) => setTutors(all))
+      .catch((err: unknown) =>
+        setLoadError(getErrorMessage(err, 'Não foi possível carregar a lista de tutores.')),
+      )
       .finally(() => setLoadingTutors(false))
   }, [isOpen, selectedDate, initialTutorId, initialCategory])
 
@@ -86,6 +91,7 @@ export function ScheduleModal({
       return
     }
     setLoadingPatients(true)
+    setLoadError('')
     setPatientId('')
     PatientsService.list(1, undefined, tutorId)
       .then((res) => {
@@ -94,7 +100,9 @@ export function ScheduleModal({
           setPatientId(initialPatientId)
         }
       })
-      .catch(() => {})
+      .catch((err: unknown) =>
+        setLoadError(getErrorMessage(err, 'Não foi possível carregar os pacientes do tutor.')),
+      )
       .finally(() => setLoadingPatients(false))
   }, [tutorId, initialPatientId])
 
@@ -307,6 +315,12 @@ export function ScheduleModal({
               style={{ resize: 'none' }}
             />
           </div>
+
+          {loadError && (
+            <div className="form-group form-group-full" role="alert">
+              <span style={{ color: 'var(--color-danger)', fontSize: '0.85rem' }}>{loadError}</span>
+            </div>
+          )}
 
           {submitError && (
             <div className="form-group form-group-full">

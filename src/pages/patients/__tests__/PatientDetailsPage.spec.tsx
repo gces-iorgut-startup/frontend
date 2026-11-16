@@ -22,13 +22,15 @@ vi.mock('../../../services/appointments.service', () => ({
 vi.mock('../../../services/budgets.service', () => ({
   BudgetsService: { createBudget: vi.fn(), listBudgets: vi.fn(), getBudgetDetails: vi.fn(), updateBudgetStatus: vi.fn() },
 }))
+const authState = vi.hoisted(() => ({ user: { id: 'vet-1', crmv: 'CRMV-SP 12345' } as { id: string; crmv: string | null } }))
 vi.mock('../../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: { user: { id: string } }) => unknown) => selector({ user: { id: 'vet-1' } }),
+  useAuthStore: (selector: (state: typeof authState) => unknown) => selector(authState),
 }))
 
 describe('PatientDetailsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.user = { id: 'vet-1', crmv: 'CRMV-SP 12345' }
     vi.mocked(clinicalService.getPatientHistory).mockResolvedValue([])
     vi.mocked(examService.listPatientExams).mockResolvedValue([])
     vi.mocked(AppointmentsService.listByDay).mockResolvedValue([])
@@ -105,8 +107,32 @@ describe('PatientDetailsPage', () => {
     expect(await screen.findByText('Atendimento iniciado')).toBeInTheDocument()
   })
 
+  it('avisa para cadastrar o CRMV e não cria atendimento sem ele', async () => {
+    const user = userEvent.setup()
+    authState.user = { id: 'vet-1', crmv: null }
+    vi.mocked(api.get).mockResolvedValue({
+      data: { patient: { id: 'patient-1', name: 'Luna', species: 'CANINE', tutor: null } },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/pacientes/patient-1']}>
+        <Routes>
+          <Route path="/pacientes/:id" element={<PatientDetailsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Atender' }))
+
+    expect(await screen.findByText(/Cadastre seu CRMV/)).toBeInTheDocument()
+    expect(AppointmentsService.create).not.toHaveBeenCalled()
+  })
+
   it('abre a aba de orçamentos com a seção do paciente', async () => {
     const user = userEvent.setup()
+    vi.mocked(api.get).mockResolvedValue({
+      data: { patient: { id: 'patient-1', name: 'Luna', species: 'CANINE', tutor: null } },
+    })
     vi.mocked(BudgetsService.listBudgets).mockResolvedValue({ budgets: [], total: 0 })
 
     render(

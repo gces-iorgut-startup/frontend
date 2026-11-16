@@ -13,7 +13,19 @@ export function getErrorMessage(error: unknown, fallback: string): string {
     const issueMessage = getValidationIssueMessage(error)
     if (issueMessage) return issueMessage
 
-    return data?.message || data?.error || error.message || fallback
+    const status = error.response?.status
+
+    if (!error.response) {
+      return error.code === 'ECONNABORTED'
+        ? 'A requisição demorou demais. Tente novamente.'
+        : 'Não foi possível conectar ao servidor. Verifique sua conexão.'
+    }
+
+    if (status && status >= 500) {
+      return 'Erro interno no servidor. Tente novamente em instantes.'
+    }
+
+    return data?.message || data?.error || fallback
   }
 
   if (error instanceof Error) {

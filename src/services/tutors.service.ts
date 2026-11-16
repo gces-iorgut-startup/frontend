@@ -9,6 +9,18 @@ export const TutorsService = {
     return response.data
   },
 
+  /** Percorre todas as páginas (a API limita cada busca a 100 tutores). */
+  async listAll(search?: string): Promise<Tutor[]> {
+    const MAX_PAGES = 20
+    const tutors: Tutor[] = []
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const result = await this.list(page, search)
+      tutors.push(...result.tutors)
+      if (result.tutors.length === 0 || tutors.length >= result.total) break
+    }
+    return tutors
+  },
+
   async getById(id: string): Promise<Tutor> {
     const response = await api.get<{ tutor: Tutor }>(`/tutors/${id}`)
     return response.data.tutor
