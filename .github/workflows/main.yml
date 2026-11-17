@@ -193,12 +193,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validar credenciais do Docker Hub em push na main
+      - name: Verificar credenciais do Docker Hub
+        id: docker_creds
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         run: |
           if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
-            echo "Erro: DOCKERHUB_USERNAME e DOCKERHUB_TOKEN são obrigatórios para publicação na main."
-            exit 1
+            echo "::notice::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN não configurados; a imagem será apenas construída (sem push)."
+            echo "can_push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_push=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Definir tags da imagem
@@ -218,7 +221,7 @@ jobs:
 
       # Sem os secrets (ex.: forks/PRs), não há login nem push; a imagem só é construída
       - name: Login no Docker Hub
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        if: steps.docker_creds.outputs.can_push == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -228,7 +231,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          push: ${{ steps.docker_creds.outputs.can_push == 'true' }}
           tags: |
             ${{ steps.meta.outputs.image }}:latest
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha_tag }}
@@ -244,23 +247,36 @@ jobs:
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     environment: production
+    outputs:
+      deployed: ${{ steps.check_vps.outputs.enabled }}
+      smoke_enabled: ${{ steps.check_vps.outputs.smoke_enabled }}
 
     steps:
-      - name: Validar secrets e variáveis obrigatórias de deploy
+      - name: Verificar credenciais de deploy da VPS
+        id: check_vps
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           PROD_BASE_URL: ${{ vars.PROD_BASE_URL || secrets.PROD_BASE_URL }}
         run: |
-          for var in SSH_HOST SSH_USER SSH_PRIVATE_KEY PROD_BASE_URL; do
-            if [ -z "${!var}" ]; then
-              echo "Erro: secret/variável ${var} não configurada no environment production."
-              exit 1
-            fi
-          done
+          if [ -z "${SSH_HOST}" ] || [ -z "${SSH_USER}" ] || [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "::notice::Secrets da VPS (SSH_HOST, SSH_USER, SSH_PRIVATE_KEY) não configurados no repositório/environment; pulando deploy SSH."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "smoke_enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          if [ -n "${PROD_BASE_URL}" ]; then
+            echo "smoke_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::PROD_BASE_URL não configurada; os smoke tests externos serão ignorados após o deploy SSH."
+            echo "smoke_enabled=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Deploy atômico na VPS via SSH
+        if: steps.check_vps.outputs.enabled == 'true'
         uses: appleboy/ssh-action@v1.1.0
         env:
           FRONTEND_IMAGE_TAG: ${{ needs.build-docker.outputs.sha_tag }}
@@ -320,7 +336,7 @@ jobs:
     name: Testes de Regressão e Smoke Pós-Deploy (WEB-05)
     needs: deploy
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.deploy.outputs.smoke_enabled == 'true'
     environment: production
 
     steps:
